@@ -17,6 +17,7 @@
 
 import * as Tone from 'tone';
 import type { GrooveOrganism, RhythmTrack, BassTrack } from './types';
+import type { HarmonyEvent } from './types';
 
 // ─── Synth Presets ───────────────────────────────────────────────────────────
 
@@ -111,6 +112,11 @@ export class AudioEngine {
   private masterGain: Tone.Gain;
   private readonly chans: Map<string, { gain: Tone.Gain; panner: Tone.Panner }> = new Map();
   private readonly synths: Map<string, Tone.MembraneSynth | Tone.Synth | Tone.NoiseSynth> = new Map();
+
+  // Harmony synth (for Wheel C)
+  private harmSynth: Tone.PolySynth | null = null;
+  private harmGain: Tone.Gain | null = null;
+  private harmPanner: Tone.Panner | null = null;
 
   // Organism reference
   private _organism: GrooveOrganism | null = null;
@@ -288,6 +294,8 @@ export class AudioEngine {
     for (const s of this.synths.values()) s.dispose();
     this.synths.clear();
     this.chans.clear();
+    if (this.bassSynth) { try { this.bassSynth.dispose(); } catch {} this.bassSynth = null; }
+    if (this.harmSynth) { try { this.harmSynth.dispose(); } catch {} this.harmSynth = null; }
     this.masterGain.dispose();
   }
 
@@ -323,6 +331,8 @@ export class AudioEngine {
     this.firePercussion(time, org.wheelA.tracks);
     // Fire bass
     this.fireBass(time, org.wheelB.tracks);
+    // Fire harmony
+    this.fireHarmony(time, org.wheelC?.events ?? []);
 
     this._globalStep++;
     this.onStep?.(this._globalStep, this._bpm);
@@ -474,6 +484,50 @@ export class AudioEngine {
     // If no bass event at this step, release held notes
     if (!hasBass && this.bassSynth) {
       try { this.bassSynth.triggerRelease(); } catch {}
+    }
+  }
+
+  // ── Harmony Engine ──────────────────────────────────────────────────
+
+  private ensureHarmonySynth() {
+    if (this.harmSynth) return;
+    this.harmPanner = new Tone.Panner(0).connect(this.masterGain);
+    this.harmGain = new Tone.Gain(0.5).connect(this.harmPanner);
+    this.harmSynth = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'sawtooth' },
+      filter: { Q: 2, frequency: 800, type: 'lowpass' },
+      envelope: {
+        attack: 0.02,
+        decay: 0.3,
+        sustain: 0.3,
+        release: 0.8,
+      },
+    }).connect(this.harmGain);
+    // Make chords warm and soft by default
+    this.harmSynth.set({ volume: -8 });
+  }
+
+  private fireHarmony(time: number, events: HarmonyEvent[]) {
+    if (!events || events.length === 0) return;
+    this.ensureHarmonySynth();
+    const hs = this.harmSynth!;
+
+    // Determine cycle length from the chord events (use max position + 1)
+    const cycleLength = events.length > 0
+      ? Math.max(...events.map(e => e.position)) + 1
+      : 16;
+    const localStep = this._globalStep % cycleLength;
+    const chordEvents = events.filter(e => e.position === localStep);
+    if (chordEvents.length === 0) return;
+
+    for (const ev of chordEvents) {
+      if (Math.random() > (ev as any).probability ?? 1) continue;
+      const durNotes = ev.duration >= 8 ? '2n' : ev.duration >= 4 ? '4n' : ev.duration >= 2 ? '8n' : '16n';
+      const vel = Math.min(((ev as any).velocity ?? 80) / 100, 1);
+      const freqs = ev.pitches.map(p => Tone.Frequency(p, 'midi').toFrequency());
+
+      // Trigger all chord tones simultaneously
+      hs.triggerAttackRelease(freqs, durNotes, time, vel);
     }
   }
 

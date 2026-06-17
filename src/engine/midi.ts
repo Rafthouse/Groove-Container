@@ -15,7 +15,7 @@
  *   - No external dependencies — pure arithmetic.
  */
 
-import type { GrooveOrganism, RhythmTrack, BassTrack } from './types';
+import type { GrooveOrganism, RhythmTrack, BassTrack, HarmonyEvent } from './types';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -76,12 +76,16 @@ function durToTicks(durationSteps: number): number {
 }
 
 /** LCM of all track cycle lengths. */
-function computeTotalSteps(tracksA: RhythmTrack[], tracksB: BassTrack[]): number {
+function computeTotalSteps(tracksA: RhythmTrack[], tracksB: BassTrack[], harmEvents?: HarmonyEvent[]): number {
   const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
   const lcm = (a: number, b: number) => a * b / gcd(a, b);
   let t = 16;
   for (const tr of tracksA) t = lcm(t, tr.cycleLength);
   for (const tr of tracksB) t = lcm(t, tr.cycleLength);
+  if (harmEvents && harmEvents.length > 0) {
+    const harmCl = Math.max(...harmEvents.map(e => e.position)) + 1;
+    t = lcm(t, harmCl);
+  }
   return t;
 }
 
@@ -190,6 +194,36 @@ function renderBassTrack(
   return { name: track.name, channel, notes };
 }
 
+// ─── Render harmony track ──────────────────────────────────────────────
+
+function renderHarmonyTrack(
+  events: HarmonyEvent[],
+  totalSteps: number,
+  channel: number,
+): MidiTrackData {
+  const notes: MidiNoteEvent[] = [];
+  if (!events || events.length === 0) return { name: 'Harmony', channel, notes };
+  const cycleLength = Math.max(...events.map(e => e.position)) + 1;
+
+  for (let step = 0; step < totalSteps; step++) {
+    const localStep = step % cycleLength;
+    const ev = events.find(e => e.position === localStep);
+    if (!ev) continue;
+
+    for (let p = 0; p < ev.pitches.length; p++) {
+      notes.push({
+        startTick: stepToTick(step),
+        durationTicks: durToTicks(ev.duration || 4),
+        channel,
+        note: ev.pitches[p],
+        velocity: toMidiVel((ev as any).velocity ?? 80),
+      });
+    }
+  }
+
+  return { name: 'Harmony', channel, notes };
+}
+
 // ─── Main export ─────────────────────────────────────────────────────────────
 
 /**
@@ -202,7 +236,7 @@ export function renderOrganismToMidi(
 ): MidiProject {
   const totalSteps = Math.max(
     bars * STEPS_PER_BAR,
-    computeTotalSteps(organism.wheelA.tracks, organism.wheelB.tracks),
+    computeTotalSteps(organism.wheelA.tracks, organism.wheelB.tracks, organism.wheelC?.events),
   );
 
   const midiTracks: MidiTrackData[] = [];
@@ -221,6 +255,14 @@ export function renderOrganismToMidi(
   for (const track of organism.wheelB.tracks) {
     if (track.mute) continue;
     const data = renderBassTrack(track, totalSteps, bassChannel);
+    if (data.notes.length > 0) {
+      midiTracks.push(data);
+    }
+  }
+
+  // Harmony track (channel 2)
+  if (organism.wheelC?.events && organism.wheelC.events.length > 0) {
+    const data = renderHarmonyTrack(organism.wheelC.events, totalSteps, 2);
     if (data.notes.length > 0) {
       midiTracks.push(data);
     }

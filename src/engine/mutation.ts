@@ -14,10 +14,12 @@ import type {
   GrooveDNA,
   PercussionEvent,
   BassEvent,
+  HarmonyEvent,
   RhythmTrack,
   WheelA,
   BassTrack,
   WheelB,
+  WheelC,
 } from './types';
 import { computeDNA } from './dna';
 
@@ -189,6 +191,9 @@ export function mutateOrganism(
 
   let wheelA: WheelA = { tracks: [...organism.wheelA.tracks] };
   let wheelB: WheelB = { tracks: [...organism.wheelB.tracks] };
+  let wheelC: WheelC | undefined = organism.wheelC
+    ? { ...organism.wheelC, events: [...organism.wheelC.events] }
+    : undefined;
 
   // Mutate Wheel A unless preserved
   if (!cfg.preserveRhythm) {
@@ -201,6 +206,21 @@ export function mutateOrganism(
   if (!cfg.preserveBass) {
     wheelB = {
       tracks: wheelB.tracks.map((t) => mutateBassTrack(t, cfg)),
+    };
+  }
+
+  // Mutate Wheel C (harmony) if present — randomize inversions and velocities
+  if (wheelC) {
+    wheelC = {
+      ...wheelC,
+      events: wheelC.events.map((ev) => {
+        if (Math.random() > cfg.strength * 0.5) return ev;
+        return {
+          ...ev,
+          inversion: Math.floor(Math.random() * 3),
+          velocity: Math.max(20, Math.min(110, (ev.velocity || 80) + Math.floor((Math.random() - 0.5) * 40))),
+        };
+      }),
     };
   }
 
@@ -233,6 +253,7 @@ export function mutateOrganism(
     ...organism,
     wheelA,
     wheelB,
+    wheelC,
     dna: finalDNA,
   };
 }

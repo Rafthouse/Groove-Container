@@ -157,6 +157,7 @@ function EventDetailPopup({
   onClose: () => void; onDelete: (trackId: string, position: number) => void;
 }) {
   const isBass = voice === 'bass';
+  const isHarmony = voice === 'harmony';
   return (
     <div className="event-popup-overlay" onClick={onClose}>
       <div className="event-popup" onClick={e => e.stopPropagation()} style={{ borderColor: color }}>
@@ -185,6 +186,22 @@ function EventDetailPopup({
                 format={v => midiToNote(v)} onChange={v => onUpdate(trackId, position, { pitch: v })} color={color} />
               <Knob label="Duration" value={event?.duration ?? 2} min={1} max={16} step={1} resetValue={2}
                 format={v => `${v} 16th`} onChange={v => onUpdate(trackId, position, { duration: v })} color={color} />
+            </div>
+          )}
+          {isHarmony && (
+            <div className="popup-bass-controls">
+              <Knob label="Root" value={((event as any)?.root ?? 48) % 12} min={0} max={11} step={1} resetValue={0}
+                format={v => NOTES[v]} onChange={v => {
+                  var currentRoot = (event as any)?.root ?? 48;
+                  var octave = Math.floor(currentRoot / 12);
+                  onUpdate(trackId, position, { root: v + octave * 12 });
+                }} color={color} />
+              <Knob label="Inversion" value={(event as any)?.inversion ?? 0} min={0} max={2} step={1} resetValue={0}
+                onChange={v => onUpdate(trackId, position, { inversion: v })} color={color} />
+              <Knob label="Velocity" value={(event as any)?.velocity ?? 80} min={0} max={100} step={5} resetValue={80}
+                onChange={v => onUpdate(trackId, position, { velocity: v })} color={color} />
+              <Knob label="Duration" value={(event as any)?.duration ?? 4} min={1} max={16} step={1} resetValue={4}
+                format={v => v + ' 16th'} onChange={v => onUpdate(trackId, position, { duration: v })} color={color} />
             </div>
           )}
           {isBass && (
@@ -325,6 +342,12 @@ export default function App() {
       const tracksB = prev.wheelB.tracks.map(t =>
         t.id === trackId ? { ...t, events: updateBassList(t.events) } : t
       );
+      if (trackId === 'harmony-grid' && prev.wheelC) {
+        var updatedHarmonyEvents = (prev.wheelC.events || []).map(function(e) {
+          return e.position === position ? { ...e, ...updates, editedManually: true } : e;
+        });
+        return { ...prev, wheelA: { tracks: tracksA }, wheelB: { tracks: tracksB }, wheelC: { ...prev.wheelC, events: updatedHarmonyEvents } };
+      }
       return { ...prev, wheelA: { tracks: tracksA }, wheelB: { tracks: tracksB } };
     });
   }, []);
@@ -553,7 +576,8 @@ export default function App() {
 
   const findEvent = (trackId: string, pos: number) => {
     const allEvents = [...currentPreset.wheelA.tracks.flatMap(t => t.events.map(e => ({ ...e, originalVoice: t.voice, trackId: t.id }))),
-      ...currentPreset.wheelB.tracks.flatMap(t => t.events.map(e => ({ ...e, originalVoice: 'bass' as const, trackId: t.id })))];
+      ...currentPreset.wheelB.tracks.flatMap(t => t.events.map(e => ({ ...e, originalVoice: 'bass' as const, trackId: t.id }))),
+      ...(currentPreset.wheelC?.events?.map(e => ({ ...e, originalVoice: 'harmony' as const, trackId: 'harmony-grid' })) ?? [])];
     return allEvents.find(e => e.trackId === trackId && e.position === pos) ?? null;
   };
 
@@ -566,8 +590,8 @@ export default function App() {
     const pos = Number(posStr);
     const event = findEvent(tid, pos);
     const trackA = currentPreset.wheelA.tracks.find(t => t.id === tid);
-    const voice = trackA?.voice ?? 'bass';
-    const color = VOICE_COLORS[voice] || VOICE_COLORS[tid] || '#c084fc';
+    const voice = tid === 'harmony-grid' ? 'harmony' : (trackA?.voice ?? 'bass');
+    const color = tid === 'harmony-grid' ? '#c084fc' : (VOICE_COLORS[voice] || VOICE_COLORS[tid] || '#c084fc');
     return { trackId: tid, position: pos, event, voice, color };
   })() : null;
 
@@ -738,6 +762,7 @@ export default function App() {
                             ...prev, wheelB: { tracks: prev.wheelB.tracks.map(t =>
                               t.id === track.id ? { ...t, volume: v } : t) }
                           }));
+                          audioEngine.setVoiceVolume(track.id, v);
                         }}
                         title={`Volume: ${track.volume}`} />
                       <span className="param-vol">{track.volume}</span>
@@ -953,8 +978,13 @@ export default function App() {
               <div className="info-row"><span className="info-key">Perc voices</span><span className="info-val">{currentPreset.wheelA.tracks.length}</span></div>
               <div className="info-row"><span className="info-key">Taxonomy</span><span className="info-val">{currentPreset.taxonomy.genus}</span></div>
               <div className="info-row"><span className="info-key">Events</span><span className="info-val">
-                {currentPreset.wheelA.tracks.reduce((s, t) => s + t.events.length, 0) + currentPreset.wheelB.tracks.reduce((s, t) => s + t.events.length, 0)}
+                {currentPreset.wheelA.tracks.reduce((s, t) => s + t.events.length, 0) + currentPreset.wheelB.tracks.reduce((s, t) => s + t.events.length, 0) + (currentPreset.wheelC?.events.length ?? 0)}
               </span></div>
+              {currentPreset.wheelC && (
+                <div className="info-row"><span className="info-key">Harmony</span><span className="info-val" style={{ color: '#c084fc' }}>
+                  {currentPreset.wheelC.events.length} chords &middot; {currentPreset.wheelC.behavior}
+                </span></div>
+              )}
               <button className="btn btn-apply" style={{ marginTop: 8, width: '100%' }}
                 onClick={() => handleGenerateBass()}>⚡ Generate Bass from Rhythm</button>
               <button className="btn btn-midi-panel" style={{ marginTop: 4, width: '100%' }}
