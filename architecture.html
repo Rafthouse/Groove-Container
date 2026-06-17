@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>Groove Container Architecture</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f1014;color:#c7c9d1;font-family:system-ui,sans-serif;display:flex;justify-content:center;padding:2rem}
+svg{max-width:1200px}
+</style></head><body>
+<svg viewBox="0 0 1100 800" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10" fill="#c084fc"/></marker>
+    <marker id="arrow-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10" fill="#5a5d68"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="40" text-anchor="middle" fill="#c084fc" font-size="22" font-weight="700">Groove Container — Architecture</text>
+
+  <!-- Wheel A: Rhythm Container -->
+  <rect x="40" y="80" width="480" height="340" rx="12" fill="none" stroke="#d07028" stroke-width="2" stroke-dasharray="6,3"/>
+  <text x="280" y="105" text-anchor="middle" fill="#d07028" font-size="16" font-weight="600">Wheel A — Rhythm Container</text>
+
+  <!-- 6 percussion tracks -->
+  <rect x="60" y="120" width="200" height="52" rx="8" fill="#1f2129" stroke="#d07028" stroke-width="1.5"/>
+  <text x="160" y="140" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="600">KICK</text>
+  <text x="160" y="156" text-anchor="middle" fill="#7b7f8c" font-size="9">vel prob acc offs rack hum</text>
+
+  <rect x="280" y="120" width="200" height="52" rx="8" fill="#1f2129" stroke="#e05820" stroke-width="1.5"/>
+  <text x="380" y="140" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="600">SNARE</text>
+  <text x="380" y="156" text-anchor="middle" fill="#7b7f8c" font-size="9">vel prob acc offs rack hum</text>
+
+  <rect x="60" y="185" width="200" height="52" rx="8" fill="#1f2129" stroke="#3878a0" stroke-width="1.5"/>
+  <text x="160" y="205" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="600">CLOSED HAT</text>
+  <text x="160" y="221" text-anchor="middle" fill="#7b7f8c" font-size="9">vel prob acc offs rack hum</text>
+
+  <rect x="280" y="185" width="200" height="52" rx="8" fill="#1f2129" stroke="#3878a0" stroke-width="1.5"/>
+  <text x="380" y="205" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="600">OPEN HAT</text>
+  <text x="380" y="221" text-anchor="middle" fill="#7b7f8c" font-size="9">vel prob acc offs rack hum</text>
+
+  <rect x="60" y="250" width="200" height="52" rx="8" fill="#1f2129" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="160" y="270" text-anchor="middle" fill="#60a5fa" font-size="11" font-weight="600">PERCUSSION</text>
+  <text x="160" y="286" text-anchor="middle" fill="#7b7f8c" font-size="9">vel prob acc offs rack hum</text>
+
+  <rect x="280" y="250" width="200" height="52" rx="8" fill="#1f2129" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="3,3"/>
+  <text x="380" y="270" text-anchor="middle" fill="#60a5fa" font-size="11" font-weight="600">GHOST PERCUSSION</text>
+  <text x="380" y="286" text-anchor="middle" fill="#7b7f8c" font-size="9">vel prob acc offs rack hum</text>
+
+  <!-- Per-track cycle length -->
+  <rect x="60" y="320" width="440" height="80" rx="8" fill="#181a21"/>
+  <text x="280" y="342" text-anchor="middle" fill="#7b7f8c" font-size="11">Polymeter — Independent Cycle Lengths</text>
+  <text x="90" y="368" fill="#d07028" font-size="10">K:16</text>
+  <text x="155" y="368" fill="#e05820" font-size="10">S:16</text>
+  <text x="230" y="368" fill="#3878a0" font-size="10">CH:13</text>
+  <text x="315" y="368" fill="#3878a0" font-size="10">OH:13</text>
+  <text x="390" y="368" fill="#60a5fa" font-size="10">P:9</text>
+  <text x="470" y="368" fill="#60a5fa" font-size="10">GP:7</text>
+  <text x="280" y="388" text-anchor="middle" fill="#5a5d68" font-size="9">Convergence every 16×13×9×7 = 13,104 steps</text>
+
+  <!-- Wheel B: Bass Container -->
+  <rect x="570" y="80" width="480" height="260" rx="12" fill="none" stroke="#48b838" stroke-width="2" stroke-dasharray="6,3"/>
+  <text x="810" y="105" text-anchor="middle" fill="#48b838" font-size="16" font-weight="600">Wheel B — Bass Container</text>
+
+  <rect x="590" y="120" width="440" height="60" rx="8" fill="#1f2129" stroke="#48b838" stroke-width="1.5"/>
+  <text x="810" y="142" text-anchor="middle" fill="#34d399" font-size="12" font-weight="600">BASS TRACK</text>
+  <text x="810" y="162" text-anchor="middle" fill="#7b7f8c" font-size="10">pitch vel dur tie slide accent ghost mute prob</text>
+
+  <!-- Bass note display -->
+  <rect x="590" y="195" width="200" height="50" rx="8" fill="#181a21"/>
+  <text x="690" y="220" text-anchor="middle" fill="#7b7f8c" font-size="10">Current Bass Notes</text>
+  <text x="690" y="238" text-anchor="middle" fill="#34d399" font-size="12" font-weight="600">C2 - G2 - C3 - D2</text>
+
+  <!-- Linkage rules -->
+  <rect x="810" y="195" width="220" height="50" rx="8" fill="#181a21"/>
+  <text x="920" y="212" text-anchor="middle" fill="#48b838" font-size="10" font-weight="600">Bass ← Rhythm Linkage</text>
+  <text x="920" y="228" text-anchor="middle" fill="#7b7f8c" font-size="9">Kick→Root · Snare→Fifth · Hat→Sub</text>
+
+  <!-- Cycle length -->
+  <rect x="590" y="260" width="440" height="60" rx="8" fill="#181a21"/>
+  <text x="810" y="282" text-anchor="middle" fill="#7b7f8c" font-size="11">Polymeter — Bass Cycle</text>
+  <text x="810" y="302" text-anchor="middle" fill="#34d399" font-size="12" font-weight="600">Bass: 11 — evolves against Rhythm: 16, 13, 9, 7</text>
+
+  <!-- Arrow: Wheel A → Wheel B -->
+  <line x1="520" y1="200" x2="570" y2="200" stroke="#c084fc" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="545" y="195" text-anchor="middle" fill="#c084fc" font-size="9" transform="rotate(-90,545,195)">BASS GENERATION</text>
+
+  <!-- Groove DNA Panel -->
+  <rect x="40" y="450" width="480" height="310" rx="12" fill="none" stroke="#c084fc" stroke-width="2"/>
+  <text x="280" y="475" text-anchor="middle" fill="#c084fc" font-size="16" font-weight="600">Groove DNA</text>
+
+  <!-- Radar chart placeholder -->
+  <rect x="60" y="495" width="200" height="240" rx="8" fill="#181a21"/>
+  <text x="160" y="620" text-anchor="middle" fill="#7b7f8c" font-size="11">Radar Chart</text>
+
+  <!-- 8 DNA axes -->
+  <g font-size="13">
+    <text x="290" y="518" fill="#28FF6A">● Density</text><text x="290" y="518" fill="#7b7f8c" text-anchor="end" dx="110">0.38</text>
+    <text x="290" y="546" fill="#FF7A00">● Syncopation</text><text x="290" y="546" fill="#7b7f8c" text-anchor="end" dx="110">0.72</text>
+    <text x="290" y="574" fill="#FF00C8">● Complexity</text><text x="290" y="574" fill="#7b7f8c" text-anchor="end" dx="110">0.55</text>
+    <text x="290" y="602" fill="#00AAFF">● Swing</text><text x="290" y="602" fill="#7b7f8c" text-anchor="end" dx="110">0.31</text>
+    <text x="290" y="630" fill="#f472b6">● Ghost Factor</text><text x="290" y="630" fill="#7b7f8c" text-anchor="end" dx="110">0.12</text>
+    <text x="290" y="658" fill="#f87171">● Aggression</text><text x="290" y="658" fill="#7b7f8c" text-anchor="end" dx="110">0.84</text>
+    <text x="290" y="686" fill="#fbbf24">● Repetition</text><text x="290" y="686" fill="#7b7f8c" text-anchor="end" dx="110">0.67</text>
+    <text x="290" y="714" fill="#60a5fa">● Randomness</text><text x="290" y="714" fill="#7b7f8c" text-anchor="end" dx="110">0.23</text>
+  </g>
+
+  <!-- Taxonomy Browser -->
+  <rect x="570" y="370" width="480" height="390" rx="12" fill="none" stroke="#f472b6" stroke-width="2"/>
+  <text x="810" y="395" text-anchor="middle" fill="#f472b6" font-size="16" font-weight="600">Taxonomy Browser</text>
+
+  <rect x="590" y="410" width="220" height="330" rx="8" fill="#181a21"/>
+  <text x="700" y="435" text-anchor="middle" fill="#7b7f8c" font-size="11">Kingdom</text>
+  <text x="610" y="460" fill="#fbbf24" font-size="12">▶ Electronic Music</text>
+  <text x="610" y="480" fill="#c084fc" font-size="12">▼ Electronic Music</text>
+  <text x="630" y="500" fill="#f472b6" font-size="11">▶ House</text>
+  <text x="630" y="520" fill="#60a5fa" font-size="11">▶ Techno</text>
+  <text x="630" y="540" fill="#34d399" font-size="11">▶ UK Garage</text>
+  <text x="630" y="560" fill="#f87171" font-size="11">▶ Breakbeat</text>
+  <text x="630" y="580" fill="#fbbf24" font-size="11">▶ IDM</text>
+  <text x="630" y="600" fill="#c084fc" font-size="11">▶ Dub Techno</text>
+  <text x="630" y="620" fill="#3a3d48" font-size="11">▶ World</text>
+  <text x="630" y="640" fill="#3a3d48" font-size="11">▶ Jazz</text>
+  <text x="630" y="660" fill="#3a3d48" font-size="11">▶ Ambient</text>
+
+  <rect x="830" y="410" width="200" height="330" rx="8" fill="#181a21"/>
+  <text x="930" y="435" text-anchor="middle" fill="#7b7f8c" font-size="11">Presets</text>
+  <text x="850" y="460" fill="#fbbf24" font-size="11">○○ Deep House 001</text>
+  <text x="850" y="480" fill="#7b7f8c" font-size="11">○○ Deep House 002</text>
+  <text x="850" y="500" fill="#7b7f8c" font-size="11">○○ Deep House 003</text>
+  <text x="850" y="520" fill="#f472b6" font-size="11">☉ Deep House 004</text>
+  <text x="850" y="540" fill="#7b7f8c" font-size="11">○○ Deep House 005</text>
+  <rect x="850" y="565" width="160" height="35" rx="6" fill="#1f2129"/>
+  <text x="930" y="588" text-anchor="middle" fill="#34d399" font-size="11">LOAD PRESET</text>
+
+  <!-- Mutation Engine -->
+  <rect x="570" y="450" width="0" height="0" rx="0"/>
+  <!-- Moved to bottom area -->
+  <rect x="40" y="790" width="1010" height="200" rx="12" fill="none" stroke="#fbbf24" stroke-width="2"/>
+  <text x="545" y="815" text-anchor="middle" fill="#fbbf24" font-size="16" font-weight="600">Groove Mutation Engine</text>
+
+  <!-- Mutation controls -->
+  <rect x="60" y="835" width="460" height="80" rx="8" fill="#181a21"/>
+  <text x="100" y="860" fill="#7b7f8c" font-size="11">Preserve</text>
+  <rect x="100" y="870" width="80" height="28" rx="6" fill="#1f2129" stroke="#c084fc" stroke-width="1.5"/>
+  <text x="140" y="889" text-anchor="middle" fill="#c084fc" font-size="10">Style ✓</text>
+  <rect x="190" y="870" width="80" height="28" rx="6" fill="#1f2129"/>
+  <text x="230" y="889" text-anchor="middle" fill="#7b7f8c" font-size="10">Bass</text>
+  <rect x="280" y="870" width="100" height="28" rx="6" fill="#1f2129"/>
+  <text x="330" y="889" text-anchor="middle" fill="#7b7f8c" font-size="10">Rhythm</text>
+  <rect x="390" y="870" width="120" height="28" rx="6" fill="#1f2129"/>
+  <text x="450" y="889" text-anchor="middle" fill="#7b7f8c" font-size="10">Complexity</text>
+
+  <text x="100" y="920" fill="#7b7f8c" font-size="11">M. Strength:</text>
+  <rect x="180" y="906" width="200" height="8" rx="4" fill="#3a3d48"/>
+  <rect x="180" y="906" width="80" height="8" rx="4" fill="#fbbf24"/>
+
+  <!-- Mutate button -->
+  <rect x="560" y="835" width="200" height="60" rx="10" fill="#c084fc"/>
+  <text x="660" y="870" text-anchor="middle" fill="#0f1014" font-size="14" font-weight="700">⟳ MUTATE</text>
+  <text x="660" y="886" text-anchor="middle" fill="#0f1014" font-size="9">Evolve without losing character</text>
+
+  <!-- Preview -->
+  <rect x="790" y="835" width="240" height="60" rx="8" fill="#181a21"/>
+  <text x="910" y="856" text-anchor="middle" fill="#7b7f8c" font-size="10">Preview Changes</text>
+  <text x="830" y="878" fill="#28FF6A" font-size="10">D: 0.38→0.42</text>
+  <text x="930" y="878" fill="#FF7A00" font-size="10">S: 0.72→0.65</text>
+  <text x="830" y="892" fill="#f87171" font-size="10">A: 0.84→0.79</text>
+  <text x="930" y="892" fill="#fbbf24" font-size="10">R: 0.67→0.71</text>
+</svg>
+</body></html>
