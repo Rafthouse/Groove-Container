@@ -6,6 +6,7 @@ import { computeDNA } from './engine/dna';
 import { mutateOrganism } from './engine/mutation';
 import { generateBassFromRhythm } from './engine/bassLinkage';
 import type { MutationConfig } from './engine/mutation';
+import { audioEngine, AudioState } from './engine/audioEngine';
 import Knob from './components/Knob';
 import './App.css';
 
@@ -98,34 +99,41 @@ const TAXONOMY_DATA: Record<string, Record<string, Record<string, string[]>>> = 
 // ─── Event Grid (interactive) ────────────────────────────────────────────────
 
 function EventGrid({
-  events, color, trackId, onToggleCell, onCellClick, maxSteps = 16, selectedCell,
+  events, color, trackId, onToggleCell, onCellClick, maxSteps = 16, selectedCell, currentStep, cycleLength,
 }: {
   events: { position: number; velocity: number; accent?: boolean }[];
   color: string; trackId: string;
   onToggleCell?: (trackId: string, position: number) => void;
   onCellClick?: (trackId: string, position: number) => void;
   maxSteps?: number; selectedCell?: string | null;
+  currentStep?: number; cycleLength?: number;
 }) {
   const cells = Array.from({ length: maxSteps }, (_, i) => {
     const evt = events.find(e => e.position === i);
     return { filled: !!evt, velocity: evt?.velocity ?? 0, accent: evt?.accent ?? false, position: i };
   });
 
+  // Which cell represents the current playback position?
+  const playPosition = currentStep !== undefined && currentStep >= 0 && cycleLength
+    ? currentStep % cycleLength
+    : -1;
+
   return (
     <div className="event-grid">
       {cells.map(c => {
         const key = `${trackId}-${c.position}`;
         const isSelected = selectedCell === key;
+        const isPlaying = playPosition >= 0 && c.position === playPosition;
         return (
           <div key={key}
-            className={`event-cell ${c.filled ? 'filled' : ''} ${c.accent ? 'accent' : ''} ${isSelected ? 'selected' : ''}`}
+            className={`event-cell ${c.filled ? 'filled' : ''} ${c.accent ? 'accent' : ''} ${isSelected ? 'selected' : ''} ${isPlaying ? 'playing' : ''}`}
             style={{
               backgroundColor: c.filled ? color : undefined,
               opacity: c.filled ? 0.5 + (c.velocity / 100) * 0.5 : 0.12,
             }}
             onClick={() => onCellClick?.(trackId, c.position)}
             onDoubleClick={() => onToggleCell?.(trackId, c.position)}
-            title={`Step ${c.position}: ${c.filled ? `vel=${c.velocity}${c.accent ? ' accent' : ''} (dbl-click to remove)` : 'rest (dbl-click to add)'}`}
+            title={`Step ${c.position}: ${c.filled ? `vel=${c.velocity}${c.accent ? ' accent' : ''} (dbl-click to remove)` : 'rest (dbl-click to add)'}${isPlaying ? ' [PLAYING]' : ''}`}
           />
         );
       })}
@@ -218,6 +226,8 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [selectedCell, setSelectedCell] = useState<string | null>(null);
   const [bassGenerated, setBassGenerated] = useState(false);
+  const [playState, setPlayState] = useState<AudioState>(AudioState.Stopped);
+  const [currentStep, setCurrentStep] = useState(-1);
 
   // Update a single event in the current organism (immutable)
   const updateEvent = useCallback((trackId: string, position: number, updates: Partial<any>) => {
@@ -320,6 +330,26 @@ export default function App() {
     setShowPreview(false); setMutatedPreview(null);
   }, [mutatedPreview]);
 
+  // ── Audio Playback ───────────────────────────────────────────────────
+
+  const handlePlayStop = useCallback(async () => {
+    if (playState === AudioState.Playing || playState === AudioState.Starting) {
+      audioEngine.stop();
+      setPlayState(AudioState.Stopped);
+      setCurrentStep(-1);
+      return;
+    }
+    // Load current organism into engine
+    audioEngine.load(currentPreset);
+    audioEngine.onStep = (step) => {
+      setCurrentStep(step);
+    };
+    audioEngine.onStateChange = (state) => {
+      setPlayState(state);
+    };
+    await audioEngine.start();
+  }, [playState, currentPreset]);
+
   // Find event at position for popup
   const findEvent = (trackId: string, pos: number) => {
     const allEvents = [...currentPreset.wheelA.tracks.flatMap(t => t.events.map(e => ({ ...e, originalVoice: t.voice, trackId: t.id }))),
@@ -350,8 +380,11 @@ export default function App() {
         <h1 className="app-title">Groove Container</h1>
         <span className="app-subtitle">Groove Intelligence System</span>
         <div className="top-controls">
+          <button className={`btn btn-play ${playState === AudioState.Playing ? 'playing' : ''}`} onClick={handlePlayStop}>
+            {playState === AudioState.Playing || playState === AudioState.Starting ? '■ STOP' : '▶ PLAY'}
+          </button>
           <button className={`btn btn-generate-bass ${bassGenerated ? 'flash' : ''}`} onClick={handleGenerateBass}>
-            ⚡ Generate Bass from Rhythm
+            ⚡ Generate Bass
           </button>
           <span className="badge">{selectedGenus}</span>
           <span className="badge-sm">{currentPreset.name}</span>
@@ -379,7 +412,8 @@ export default function App() {
                     </div>
                     <EventGrid events={track.events} color={VOICE_COLORS[track.voice]} trackId={track.id}
                       onToggleCell={toggleCell} onCellClick={handleCellClick}
-                      selectedCell={selectedCell} maxSteps={Math.min(track.cycleLength, 32)} />
+                      selectedCell={selectedCell} maxSteps={Math.min(track.cycleLength, 32)}
+                      currentStep={playState === AudioState.Playing ? currentStep : -1} cycleLength={track.cycleLength} />
                     <div className="track-params">
                       <span className="param">Vol {track.volume}</span>
                       <span className="param">Pan {track.pan}</span>
@@ -414,7 +448,8 @@ export default function App() {
                     </div>
                     <EventGrid events={track.events} color="#48b838" trackId={track.id}
                       onToggleCell={toggleCell} onCellClick={handleCellClick}
-                      selectedCell={selectedCell} maxSteps={Math.min(track.cycleLength, 32)} />
+                      selectedCell={selectedCell} maxSteps={Math.min(track.cycleLength, 32)}
+                      currentStep={playState === AudioState.Playing ? currentStep : -1} cycleLength={track.cycleLength} />
                     <div className="track-params">
                       <span className="param">Pitch range</span>
                       <span className="param">{track.events.length > 0 ? `${midiToNote(Math.min(...track.events.map(e => e.pitch)))}-${midiToNote(Math.max(...track.events.map(e => e.pitch)))}` : '-'}</span>
