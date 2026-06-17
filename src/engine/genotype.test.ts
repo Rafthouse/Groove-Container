@@ -3,6 +3,60 @@ import { generateFromGenotype, inferGenotype, DEFAULT_GENOTYPE } from './genotyp
 
 describe('generateFromGenotype', () => {
   it('generates a valid organism with default genotype', () => {
+    const org = generateFromGenotype({}, 'Harmony Test');
+    expect(org).toBeDefined();
+    expect(org.id).toBeTruthy();
+    expect(org.wheelA.tracks.length).toBe(6);
+    expect(org.wheelB.tracks.length).toBe(1);
+  });
+
+  it('generates an organism with Wheel C (harmony)', () => {
+    const org = generateFromGenotype({
+      harmonicDensity: 'medium',
+      harmonicMotion: 'circular',
+      chordComplexity: 'simple',
+    }, 'Harmony Organism');
+    expect(org.wheelC).toBeDefined();
+    if (org.wheelC) {
+      expect(org.wheelC.events.length).toBeGreaterThan(0);
+      expect(org.wheelC.scaleFamily).toBe('aeolian');
+      expect(org.wheelC.behavior).toBe('circular');
+      expect(org.wheelC.density).toBe('medium');
+    }
+  });
+
+  it('generates harmony with dense complexity (extended)', () => {
+    const org = generateFromGenotype({
+      chordComplexity: 'extended',
+      harmonicDensity: 'dense',
+    }, 'Extended Harmonies');
+    expect(org.wheelC).toBeDefined();
+    if (org.wheelC) {
+      expect(org.wheelC.complexity).toBe('extended');
+      expect(org.wheelC.events.length).toBeGreaterThan(3);
+      for (const ev of org.wheelC.events) {
+        expect(ev.pitches.length).toBeGreaterThanOrEqual(4);
+      }
+    }
+  });
+
+  it('inharmonynonoid gene is inferred from organism', () => {
+    const org = generateFromGenotype({
+      harmonicDensity: 'sparse',
+      harmonicMotion: 'static',
+      chordComplexity: 'simple',
+      resolutionPreference: 'strong',
+    }, 'Infer Test');
+    const inferred = inferGenotype(org);
+    expect(inferred.harmonicDensity).toBeDefined();
+    expect(inferred.harmonicMotion).toBe('static');
+    expect(inferred.chordComplexity).toBe('simple');
+    expect(inferred.resolutionPreference).toBeDefined();
+  });
+});
+
+describe('generateFromGenotype - existing tests', () => {
+  it('generates a valid organism with default genotype', () => {
     const org = generateFromGenotype({}, 'Test Default');
     expect(org).toBeDefined();
     expect(org.name).toBe('Test Default');
@@ -128,11 +182,11 @@ describe('inferGenotype', () => {
     expect(org.dna.density).toBeGreaterThan(0.3);
   });
 
-  it('returns a complete GrooveGenotype with all 16 fields (12 rhythm + 4 modal bass)', () => {
+  it('returns a complete GrooveGenotype with all 21 fields (12 rhythm + 4 modal bass + 5 harmony)', () => {
     const org = generateFromGenotype({}, 'Complete');
     const g = inferGenotype(org);
     const keys = Object.keys(DEFAULT_GENOTYPE);
-    expect(keys.length).toBe(16);
+    expect(keys.length).toBe(21);
     for (const key of keys) {
       expect(g).toHaveProperty(key);
     }

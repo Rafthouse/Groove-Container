@@ -22,9 +22,10 @@
 
 import type {
   GrooveOrganism, RhythmTrack, BassTrack,
-  PercussionEvent, BassEvent, PercussionVoice,
+  PercussionEvent, BassEvent, PercussionVoice, HarmonyEvent,
 } from './types';
 import { computeDNA } from './dna';
+import { generateHarmony } from './harmony';
 import type { ScaleFamily } from './scales';
 import type { PhraseBehavior, HarmonicGravity, IntervalPreference } from './phrase';
 
@@ -67,6 +68,13 @@ export interface GrooveGenotype {
   phraseBehavior: PhraseBehavior;
   harmonicGravity: HarmonicGravity;
   intervalPreference: IntervalPreference;
+
+  // ── Harmony genes ──────────────────────────────────────────
+  harmonicDensity: 'sparse' | 'medium' | 'dense';
+  harmonicMotion: 'static' | 'floating' | 'circular' | 'narrative' | 'ritual';
+  harmonicGravityStr: 'weak' | 'medium' | 'strong';
+  chordComplexity: 'simple' | 'rich' | 'extended' | 'experimental';
+  resolutionPreference: 'avoid' | 'moderate' | 'strong';
 }
 
 // ─── Default Genotype ───────────────────────────────────────────────────────
@@ -90,6 +98,13 @@ export const DEFAULT_GENOTYPE: GrooveGenotype = {
   phraseBehavior: 'walking',
   harmonicGravity: 'medium',
   intervalPreference: 'mixed',
+
+  // ── Harmony defaults ──────────────────────────────────────
+  harmonicDensity: 'medium',
+  harmonicMotion: 'circular',
+  harmonicGravityStr: 'medium',
+  chordComplexity: 'simple',
+  resolutionPreference: 'moderate',
 };
 
 // ─── Genotype Display Labels ────────────────────────────────────────────────
@@ -111,6 +126,13 @@ export const GENOTYPE_LABELS: Record<keyof GrooveGenotype, string> = {
   phraseBehavior: 'Bass Phrase',
   harmonicGravity: 'Harm. Gravity',
   intervalPreference: 'Bass Intervals',
+
+  // ── Harmony labels ────────────────────────────────────────
+  harmonicDensity: 'Harm. Density',
+  harmonicMotion: 'Harm. Motion',
+  harmonicGravityStr: 'Harm. Gravity',
+  chordComplexity: 'Chord Complex.',
+  resolutionPreference: 'Resolution',
 };
 
 export const GENOTYPE_OPTIONS: Record<keyof GrooveGenotype, readonly string[]> = {
@@ -137,6 +159,13 @@ export const GENOTYPE_OPTIONS: Record<keyof GrooveGenotype, readonly string[]> =
   phraseBehavior: ['walking','rolling','pendulum','droneMovement','callResponse','circular','spiral','minimal','hypnotic'],
   harmonicGravity: ['weak','medium','strong'],
   intervalPreference: ['stepwise','mixed','leaping'],
+
+  // ── Harmony options ───────────────────────────────────────
+  harmonicDensity: ['sparse', 'medium', 'dense'],
+  harmonicMotion: ['static', 'floating', 'circular', 'narrative', 'ritual'],
+  harmonicGravityStr: ['weak', 'medium', 'strong'],
+  chordComplexity: ['simple', 'rich', 'extended', 'experimental'],
+  resolutionPreference: ['avoid', 'moderate', 'strong'],
 };
 
 // ─── Helper: range ──────────────────────────────────────────────────────────
@@ -574,6 +603,47 @@ function nextId(): string {
   return `gen-${(++genIdCounter).toString(36)}`;
 }
 
+// ─── Harmony helpers ──────────────────────────────────────────────
+
+function chordComplexityFromGene(gene: string): string {
+  switch (gene) {
+    case 'simple': return 'triads';
+    case 'rich': return 'sevenths';
+    case 'extended': return 'extended';
+    case 'experimental': return 'modalVoicings';
+    default: return 'triads';
+  }
+}
+
+function motionToChordBehavior(motion: string): string {
+  switch (motion) {
+    case 'static': return 'static';
+    case 'floating': return 'floating';
+    case 'circular': return 'circular';
+    case 'narrative': return 'narrative';
+    case 'ritual': return 'ritual';
+    default: return 'circular';
+  }
+}
+
+function generateHarmonyFromGenotype(g: GrooveGenotype): HarmonyEvent[] {
+  const bassEvents: BassEvent[] = generateBassTrack(
+    Array.from({ length: 16 }, (_, i) => i).filter(() => Math.random() < 0.3),
+    16, g.register, g.noteLength, g.timingFeel,
+  );
+  return generateHarmony({
+    scaleFamily: g.scaleFamily,
+    scaleRoot: 48, // C3
+    behavior: motionToChordBehavior(g.harmonicMotion) as any,
+    density: g.harmonicDensity as any,
+    complexity: chordComplexityFromGene(g.chordComplexity) as any,
+    cycleLength: 16,
+    octave: 2,
+    bassEvents,
+    seed: undefined,
+  });
+}
+
 /**
  * Generate a complete GrooveOrganism from a Genotype.
  * The same genotype with different seeds produces different results.
@@ -641,6 +711,9 @@ function generateFromGenotypeImpl(
   const bassCL = cl(5);
   const bassTrack = generateBassTrack(kickPositions, bassCL, g.register, g.noteLength, g.timingFeel);
 
+  // Generate harmony from harmony genes
+  const harmonyEvents = generateHarmonyFromGenotype(g);
+
   const organism: GrooveOrganism = {
     id: nextId(),
     name,
@@ -648,6 +721,13 @@ function generateFromGenotypeImpl(
     swing: Math.round(swingFromFeel(g.timingFeel)),
     wheelA: { tracks },
     wheelB: { tracks: [bassTrack] },
+    wheelC: {
+      events: harmonyEvents,
+      scaleFamily: g.scaleFamily,
+      behavior: g.harmonicMotion,
+      density: g.harmonicDensity,
+      complexity: chordComplexityFromGene(g.chordComplexity),
+    },
     taxonomy: {
       kingdom: 'Generated',
       family: 'Genotype',
@@ -841,10 +921,37 @@ export function inferGenotype(organism: GrooveOrganism): GrooveGenotype {
     avgJump < 5   ? 'mixed'    :
                     'leaping';
 
+  // ── Harmony inference ──────────────────────────────────────
+  const wheelC = organism.wheelC;
+  const harmonicDensity = wheelC?.density || 'medium';
+  const harmonicMotion = wheelC?.behavior || 'circular';
+  const chordComplexity = complexityToChordGene(wheelC?.complexity || 'triads');
+  const harmonicGravityStr: 'weak' | 'medium' | 'strong' = d.repetition > 0.6 ? 'strong' :
+    d.repetition > 0.35 ? 'medium' : 'weak';
+  const resolutionPreference: 'avoid' | 'moderate' | 'strong' =
+    d.repetition > 0.7 ? 'strong' :
+    d.swing > 0.5 ? 'moderate' :
+    d.randomness > 0.4 ? 'avoid' : 'moderate';
+
   return {
     rhythmDensity, accentStrategy, timingFeel, entryTiming,
     motion, noteLength, register, kickSnare, kickHat,
     silence, mutationStrength, polymeter,
     scaleFamily, phraseBehavior, harmonicGravity, intervalPreference,
+    harmonicDensity: (harmonicDensity as 'sparse' | 'medium' | 'dense'),
+    harmonicMotion: (harmonicMotion as 'static' | 'floating' | 'circular' | 'narrative' | 'ritual'),
+    harmonicGravityStr,
+    chordComplexity: (chordComplexity as 'simple' | 'rich' | 'extended' | 'experimental'),
+    resolutionPreference,
   };
+}
+
+function complexityToChordGene(complexity: string): string {
+  switch (complexity) {
+    case 'triads': return 'simple';
+    case 'sevenths': return 'rich';
+    case 'extended': return 'extended';
+    case 'quartal': case 'cluster': case 'modalVoicings': return 'experimental';
+    default: return 'simple';
+  }
 }

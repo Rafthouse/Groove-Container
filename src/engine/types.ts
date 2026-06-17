@@ -106,6 +106,41 @@ export interface WheelB {
   tracks: BassTrack[];
 }
 
+// ─── Wheel C — Harmony Container ────────────────────────────────────────────
+
+/** A single harmony event in a chord stream. */
+export interface HarmonyEvent {
+  /** Position in 16th steps. */
+  position: number;
+  /** Root note MIDI. */
+  root: number;
+  /** Array of chord tone MIDI notes (includes root). */
+  pitches: number[];
+  /** Duration in 16th steps. */
+  duration: number;
+  /** Inversion: 0=root, 1=first inversion, 2=second inversion. */
+  inversion: number;
+  /** Velocity 0-127. */
+  velocity: number;
+  /** User-edit flag; survives regeneration. */
+  editedManually?: boolean;
+  /** Slash chord — bass note override (if different from root). */
+  bassNote?: number;
+}
+
+/** Wheel C — Harmony Container (1 harmony stream). */
+export interface WheelC {
+  events: HarmonyEvent[];
+  /** Scale family used for generation. */
+  scaleFamily: string;
+  /** Behavior used for generation. */
+  behavior: string;
+  /** Chord density used for generation. */
+  density: string;
+  /** Complexity used for generation. */
+  complexity: string;
+}
+
 // ─── Groove DNA / Metacognition ──────────────────────────────────────────────
 
 /**
@@ -164,6 +199,8 @@ export interface GrooveOrganism {
   name: string;
   wheelA: WheelA;
   wheelB: WheelB;
+  /** Wheel C — Harmony Container. Optional; may be absent in rhythm-only organisms. */
+  wheelC?: WheelC;
   dna: GrooveDNA;
   bpm: number;
   swing: number; // global swing 0-100

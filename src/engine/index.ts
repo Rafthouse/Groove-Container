@@ -10,3 +10,7 @@ export * from './rotate';
 export * from './dna';
 export * from './mutation';
 export * from './bassLinkage';
+export * from './scales';
+export * from './phrase';
+export * from './modalBass';
+export * from './harmony';
