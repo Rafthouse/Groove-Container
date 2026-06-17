@@ -13,6 +13,7 @@ import type { PresetRecord } from './engine/persistence';
 import { generateFromGenotype, inferGenotype, DEFAULT_GENOTYPE, GENOTYPE_LABELS, GENOTYPE_OPTIONS } from './engine/genotype';
 import type { GrooveGenotype } from './engine/genotype';
 import Knob from './components/Knob';
+import HarmonyWheel from './components/HarmonyWheel';
 import './App.css';
 
 // ─── DNA Colors & Labels ──────────────────────────────────────────────────────
@@ -772,6 +773,23 @@ export default function App() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          <div className="wheel-arrow">
+            <div className="arrow-line" />
+            <div className="arrow-label">Rhythm → Harmony</div>
+          </div>
+
+          <div className="wheel-panel wheel-c">
+            <div className="wheel-header">
+              <span className="wheel-icon">◉</span>
+              <span className="wheel-title">Wheel C — Harmony Container</span>
+              <span className="wheel-voices">{currentPreset.wheelC ? currentPreset.wheelC.events.length + ' chords' : 'no data'}</span>
+              <span className="wheel-hint">generated from genotype / genes</span>
+            </div>
+            <div className="wheel-body">
+              <HarmonyWheel organism={currentPreset} selectedCell={selectedCell} playState={playState} currentStep={currentStep} onCellClick={function(pos) { setSelectedCell(function(prev) { var key = 'harmony-grid-' + pos; return prev === key ? null : key; }); }} />
             </div>
           </div>
 
