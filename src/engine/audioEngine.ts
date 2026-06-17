@@ -161,6 +161,19 @@ export class AudioEngine {
       this.ensureVoice(track.id, track.voice as SynthVoice);
     }
     // Bass track — will use triggerBass separately
+    // Also ensure bass has a channel entry for mute control
+    for (const track of organism.wheelB.tracks) {
+      if (!this.chans.has(track.id)) {
+        this.ensureBassSynth();
+        const panner = new Tone.Panner(0).connect(this.masterGain);
+        const gain = new Tone.Gain(track.volume / 100).connect(panner);
+        this.chans.set(track.id, { gain, panner });
+        if (this.bassSynth) {
+          this.bassSynth.disconnect();
+          this.bassSynth.connect(gain);
+        }
+      }
+    }
   }
 
   updateBpm(bpm: number) {
@@ -233,7 +246,16 @@ export class AudioEngine {
   muteVoice(trackId: string, muted: boolean) {
     const chan = this.chans.get(trackId);
     if (chan) {
-      chan.gain.gain.value = muted ? 0 : (VOICE_CONFIGS[trackId as SynthVoice]?.gain ?? 0.7);
+      const baseGain = (VOICE_CONFIGS[trackId as SynthVoice]?.gain ?? 0.7);
+      chan.gain.gain.value = muted ? 0 : baseGain;
+    }
+  }
+
+  /** Set per-track volume (0-100) live. */
+  setVoiceVolume(trackId: string, volume: number) {
+    const chan = this.chans.get(trackId);
+    if (chan) {
+      chan.gain.gain.value = (volume / 100) * (VOICE_CONFIGS[trackId as SynthVoice]?.gain ?? 0.7);
     }
   }
 

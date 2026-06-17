@@ -257,12 +257,96 @@ body {
   100% { outline-color: #28FF6A; }
 }
 
+.track-controls {
+  display: flex;
+  gap: 3px;
+  margin-left: auto;
+}
+.track-btn {
+  width: 18px; height: 18px;
+  border: 1px solid #1f1f2e;
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--text-dim);
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  line-height: 16px;
+  text-align: center;
+  transition: all 0.1s;
+}
+.track-btn:hover { border-color: var(--text-dim); }
+.track-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.track-btn.track-mute.active { background: rgba(248, 113, 113, 0.2); border-color: var(--danger); color: var(--danger); }
+
 .track-params {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   font-size: 9px;
   color: var(--text-dim);
   font-family: var(--mono);
+  align-items: center;
+}
+.track-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  background: var(--panel);
+  border-radius: 2px;
+  outline: none;
+  width: 36px;
+}
+.track-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  cursor: pointer;
+}
+.param-vol { min-width: 16px; text-align: right; }
+
+/* ─── Live Controls in Top Bar ────────────────────────────────── */
+.live-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.live-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.live-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  min-width: 24px;
+}
+.live-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  background: var(--panel-hi);
+  border-radius: 2px;
+  outline: none;
+  width: 50px;
+}
+.live-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+.live-value {
+  font-family: var(--mono);
+  font-size: 10px;
+  min-width: 24px;
+  color: var(--accent);
 }
 
 /* Wheel Arrow */

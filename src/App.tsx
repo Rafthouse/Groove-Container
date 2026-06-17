@@ -426,6 +426,34 @@ export default function App() {
           <button className="btn btn-midi" onClick={() => downloadMidi(currentPreset, 4)}>
             ♪ Export MIDI
           </button>
+          <div className="live-controls">
+            <div className="live-group">
+              <span className="live-label">Swing</span>
+              <input type="range" className="live-slider" min={0} max={100} value={currentPreset.swing}
+                onChange={e => {
+                  const v = Number(e.target.value);
+                  setCurrentPreset(prev => ({ ...prev, swing: v }));
+                  audioEngine.updateSwing(v);
+                }} />
+              <span className="live-value">{currentPreset.swing}%</span>
+            </div>
+            <div className="live-group">
+              <span className="live-label">Vol</span>
+              <input type="range" className="live-slider" min={0} max={100} value={Math.round(audioEngine['masterGain']?.gain?.value ?? 70)}
+                onChange={e => audioEngine.setMasterVolume(Number(e.target.value) / 100)} />
+              <span className="live-value">{Math.round(audioEngine['masterGain']?.gain?.value ?? 70)}</span>
+            </div>
+            <div className="live-group">
+              <span className="live-label">BPM</span>
+              <input type="range" className="live-slider" min={60} max={200} value={currentPreset.bpm}
+                onChange={e => {
+                  const v = Number(e.target.value);
+                  setCurrentPreset(prev => ({ ...prev, bpm: v }));
+                  audioEngine.updateBpm(v);
+                }} />
+              <span className="live-value">{currentPreset.bpm}</span>
+            </div>
+          </div>
           <span className="badge">{selectedGenus}</span>
           <span className="badge-sm">{currentPreset.name}</span>
         </div>
@@ -449,13 +477,41 @@ export default function App() {
                       <span className="voice-dot" style={{ backgroundColor: VOICE_COLORS[track.voice] }} />
                       {track.name}
                       <span className="cycle-badge">{track.cycleLength}</span>
+                      <div className="track-controls">
+                        <button className={`track-btn ${track.solo ? 'active' : ''}`} title="Solo"
+                          onClick={() => {
+                            setCurrentPreset(prev => ({
+                              ...prev, wheelA: { tracks: prev.wheelA.tracks.map(t =>
+                                t.id === track.id ? { ...t, solo: !t.solo } : t) }
+                            }));
+                            audioEngine.muteVoice(track.id, track.mute);
+                          }}>S</button>
+                        <button className={`track-btn track-mute ${track.mute ? 'active' : ''}`} title="Mute"
+                          onClick={() => {
+                            const newMute = !track.mute;
+                            setCurrentPreset(prev => ({
+                              ...prev, wheelA: { tracks: prev.wheelA.tracks.map(t =>
+                                t.id === track.id ? { ...t, mute: newMute } : t) }
+                            }));
+                            audioEngine.muteVoice(track.id, newMute);
+                          }}>M</button>
+                      </div>
                     </div>
                     <EventGrid events={track.events} color={VOICE_COLORS[track.voice]} trackId={track.id}
                       onToggleCell={toggleCell} onCellClick={handleCellClick}
                       selectedCell={selectedCell} maxSteps={Math.min(track.cycleLength, 32)}
                       currentStep={playState === AudioState.Playing ? currentStep : -1} cycleLength={track.cycleLength} />
                     <div className="track-params">
-                      <span className="param">Vol {track.volume}</span>
+                      <input type="range" className="track-slider" min={0} max={100} value={track.volume}
+                        onChange={e => {
+                          const v = Number(e.target.value);
+                          setCurrentPreset(prev => ({
+                            ...prev, wheelA: { tracks: prev.wheelA.tracks.map(t =>
+                              t.id === track.id ? { ...t, volume: v } : t) }
+                          }));
+                        }}
+                        title={`Volume: ${track.volume}`} />
+                      <span className="param-vol">{track.volume}</span>
                       <span className="param">Pan {track.pan}</span>
                     </div>
                   </div>
@@ -485,12 +541,33 @@ export default function App() {
                       <span className="note-display">
                         {track.events.slice(0, 8).map(e => midiToNote(e.pitch)).join(' ')}
                       </span>
+                      <div className="track-controls">
+                        <button className={`track-btn ${track.mute ? 'active' : ''}`} title="Mute"
+                          onClick={() => {
+                            const newMute = !track.mute;
+                            setCurrentPreset(prev => ({
+                              ...prev, wheelB: { tracks: prev.wheelB.tracks.map(t =>
+                                t.id === track.id ? { ...t, mute: newMute } : t) }
+                            }));
+                            audioEngine.muteVoice(track.id, newMute);
+                          }}>M</button>
+                      </div>
                     </div>
                     <EventGrid events={track.events} color="#48b838" trackId={track.id}
                       onToggleCell={toggleCell} onCellClick={handleCellClick}
                       selectedCell={selectedCell} maxSteps={Math.min(track.cycleLength, 32)}
                       currentStep={playState === AudioState.Playing ? currentStep : -1} cycleLength={track.cycleLength} />
                     <div className="track-params">
+                      <input type="range" className="track-slider" min={0} max={100} value={track.volume}
+                        onChange={e => {
+                          const v = Number(e.target.value);
+                          setCurrentPreset(prev => ({
+                            ...prev, wheelB: { tracks: prev.wheelB.tracks.map(t =>
+                              t.id === track.id ? { ...t, volume: v } : t) }
+                          }));
+                        }}
+                        title={`Volume: ${track.volume}`} />
+                      <span className="param-vol">{track.volume}</span>
                       <span className="param">Pitch range</span>
                       <span className="param">{track.events.length > 0 ? `${midiToNote(Math.min(...track.events.map(e => e.pitch)))}-${midiToNote(Math.max(...track.events.map(e => e.pitch)))}` : '-'}</span>
                     </div>
