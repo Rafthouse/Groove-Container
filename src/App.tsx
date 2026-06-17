@@ -1,13 +1,13 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import type { GrooveOrganism, GrooveDNA, PercussionEvent, BassEvent, RhythmTrack, BassTrack } from './engine/types';
 import type { PercussionVoice } from './engine/types';
 import { getBuiltInPresets } from './engine/presets';
 import { computeDNA } from './engine/dna';
 import { mutateOrganism } from './engine/mutation';
-import { generateBassFromRhythm } from './engine/bassLinkage';
+import { generateBassFromRhythmGenotype } from './engine/bassLinkage';
 import type { MutationConfig } from './engine/mutation';
 import { audioEngine, AudioState } from './engine/audioEngine';
-import { downloadMidi } from './engine/midi';
+import { downloadMidi, downloadMidiStems } from './engine/midi';
 import { storage } from './engine/persistence';
 import type { PresetRecord } from './engine/persistence';
 import { generateFromGenotype, inferGenotype, DEFAULT_GENOTYPE, GENOTYPE_LABELS, GENOTYPE_OPTIONS } from './engine/genotype';
@@ -249,12 +249,93 @@ export default function App() {
     });
   });
 
-  // Load saved presets on mount
+  // Load saved presets + session on mount
   useState(() => {
     storage.init().then(() => {
       storage.loadAllPresets().then(records => setSavedPresets(records));
+      storage.loadSession().then(session => {
+        if (session?.organism) {
+          setCurrentPreset(session.organism);
+        }
+        if (session?.selectedTaxonomy) {
+          setSelectedKingdom(session.selectedTaxonomy.kingdom);
+          setSelectedFamily(session.selectedTaxonomy.family);
+          setSelectedGenus(session.selectedTaxonomy.genus);
+        }
+        if (session?.mutationConfig) {
+          setMutationConfig(session.mutationConfig);
+        }
+      });
     });
   });
+
+  // ── Keyboard shortcuts ────────────────────────────────────────────
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't capture when typing in inputs
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          handlePlayStop();
+          break;
+        case 'KeyM':
+          // Toggle mute on selected track (try bass, else first perc track)
+          const firstPerc = currentPreset.wheelA.tracks.find(t => t.voice === 'kick');
+          if (firstPerc) {
+            const newMute = !firstPerc.mute;
+            setCurrentPreset(prev => ({
+              ...prev, wheelA: { tracks: prev.wheelA.tracks.map(t =>
+                t.id === firstPerc.id ? { ...t, mute: newMute } : t) }
+            }));
+            audioEngine.muteVoice(firstPerc.id, newMute);
+          }
+          break;
+        case 'KeyS':
+          // Save preset
+          const name = currentPreset.name;
+          const record = storage.createRecord(currentPreset, name);
+          storage.savePreset(record).then(() => {
+            storage.loadAllPresets().then(records => setSavedPresets(records));
+            setPersistMsg(`\u2713 Saved "${name}"`);
+            setTimeout(() => setPersistMsg(''), 2000);
+          });
+          break;
+        case 'KeyB':
+          // Generate bass
+          handleGenerateBass();
+          break;
+        case 'KeyR':
+          // Random mutation
+          handleMutate();
+          break;
+        case 'KeyG':
+          // Toggle genes panel
+          setShowGenes(prev => !prev);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handlePlayStop, handleGenerateBass, handleMutate, currentPreset]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save session on changes (debounced)
+  const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+    autoSaveRef.current = setTimeout(() => {
+      storage.saveSession({
+        organism: currentPreset,
+        selectedTaxonomy: { kingdom: selectedKingdom, family: selectedFamily, genus: selectedGenus },
+        mutationConfig,
+        version: 1,
+      });
+    }, 2000);
+    return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
+  }, [currentPreset, selectedKingdom, selectedFamily, selectedGenus, mutationConfig]);
 
   const handleSavePreset = useCallback(async () => {
     const name = saveName.trim() || currentPreset.name;
@@ -332,9 +413,20 @@ export default function App() {
     }));
   }, []);
 
-  // Generate bass from rhythm
+  // Generate bass from rhythm (genotype-aware)
   const handleGenerateBass = useCallback(() => {
-    const bassEvents = generateBassFromRhythm(currentPreset.wheelA.tracks, 16);
+    const genotype = inferredGenotype ?? {};
+    const bassEvents = generateBassFromRhythmGenotype(
+      currentPreset.wheelA.tracks,
+      16,
+      {
+        kickSnare: genotype.kickSnare,
+        kickHat: genotype.kickHat,
+        register: genotype.register,
+        noteLength: genotype.noteLength,
+        timingFeel: genotype.timingFeel,
+      }
+    );
     const updated = {
       ...currentPreset,
       wheelB: {
@@ -347,7 +439,7 @@ export default function App() {
     setCurrentPreset(updated);
     setBassGenerated(true);
     setTimeout(() => setBassGenerated(false), 2000);
-  }, [currentPreset]);
+  }, [currentPreset, inferredGenotype]);
 
   // Filter presets
   const filteredPresets = useMemo(() => presets.filter(p => {
@@ -446,6 +538,10 @@ export default function App() {
         <h1 className="app-title">Groove Container</h1>
         <span className="app-subtitle">Groove Intelligence System</span>
         <div className="top-controls">
+          <div className="metronome" title={`Step ${currentStep >= 0 ? currentStep : '-'}`}>
+            <div className={`metro-dot ${playState === AudioState.Playing && currentStep % 16 === 0 ? 'downbeat' : ''} ${playState === AudioState.Playing ? 'active' : ''}`} />
+            <div className="metro-label">{currentStep >= 0 ? `${currentStep}` : '--'}</div>
+          </div>
           <button className={`btn btn-play ${playState === AudioState.Playing ? 'playing' : ''}`} onClick={handlePlayStop}>
             {playState === AudioState.Playing || playState === AudioState.Starting ? '■ STOP' : '▶ PLAY'}
           </button>
@@ -453,7 +549,10 @@ export default function App() {
             ⚡ Generate Bass
           </button>
           <button className="btn btn-midi" onClick={() => downloadMidi(currentPreset, 4)}>
-            ♪ Export MIDI
+            ♪ MIDI
+          </button>
+          <button className="btn btn-stems" onClick={() => downloadMidiStems(currentPreset)}>
+            ♪ Stems
           </button>
           <div className="live-controls">
             <div className="live-group">
@@ -485,6 +584,7 @@ export default function App() {
           </div>
           <span className="badge">{selectedGenus}</span>
           <span className="badge-sm">{currentPreset.name}</span>
+          <span className="shortcuts-hint" title="Space=Play/Stop · M=Mute kick · S=Save · B=Bass · R=Mutate · G=Genes">⌨</span>
         </div>
       </header>
 

@@ -346,3 +346,32 @@ export function downloadMidi(organism: GrooveOrganism, filename?: string): void 
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// ─── Individual Stems ────────────────────────────────────────────────────────
+
+/**
+ * Export each voice of a GrooveOrganism as individual MIDI files.
+ * Downloads multiple files — one per track with events.
+ */
+export function downloadMidiStems(organism: GrooveOrganism): void {
+  const baseName = organism.name.replace(/\s+/g, '-');
+  const project = renderOrganismToMidi(organism, 4);
+  for (const track of project.tracks) {
+    const stemProject: MidiProject = {
+      format: 1,
+      ticksPerQuarter: project.ticksPerQuarter,
+      bpm: project.bpm,
+      tracks: [track],
+    };
+    const bytes = serializeMidi(stemProject);
+    const blob = new Blob([bytes], { type: 'audio/midi' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${baseName}-${track.name.replace(/\s+/g, '-').toLowerCase()}.mid`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+}

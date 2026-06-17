@@ -147,6 +147,133 @@ export function generateBassFromRhythm(
   return mergeDuplicatePositions(bassEvents.sort((a, b) => a.position - b.position));
 }
 
+// ─── Genotype-aware Linkage Config ─────────────────────────────────────────
+
+// Inline genotype type references to avoid circular dependencies
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
+
+/**
+ * Get a LinkageConfig from groove genes.
+ * Maps genotype to bass generation parameters:
+ *   - kickSnare: affects whether bass follows, anticipates, or bounces off snare
+ *   - kickHat: affects subdivision density from hats
+ *   - register: sets bass note range
+ *   - noteLength: sets bass note duration
+ *   - timingFeel: affects probability of syncopation
+ */
+export function configFromGenotype(params: {
+  kickSnare?: string;
+  kickHat?: string;
+  register?: string;
+  noteLength?: string;
+  timingFeel?: string;
+}): Partial<LinkageConfig> {
+  const config: Partial<LinkageConfig> = {};
+  const nm: Partial<BassNoteMap> = {};
+
+  // Register → note map
+  switch (params.register) {
+    case 'sub-harmonic': nm.root = 28; nm.fifth = 35; nm.octave = 40; nm.offBeat = 30; nm.ghost = 22; break;
+    case 'low':          nm.root = 36; nm.fifth = 43; nm.octave = 48; nm.offBeat = 38; nm.ghost = 28; break;
+    case 'mid':          nm.root = 48; nm.fifth = 55; nm.octave = 60; nm.offBeat = 50; nm.ghost = 40; break;
+    case 'high':         nm.root = 60; nm.fifth = 67; nm.octave = 72; nm.offBeat = 62; nm.ghost = 52; break;
+  }
+
+  // Note length → duration distribution
+  switch (params.noteLength) {
+    case 'micro':     break; // 1-2 steps
+    case 'staccato':  break; // 1-2 steps
+    case 'short':     break; // 2-4 steps
+    case 'medium':    break; // 4-8 steps
+    case 'long':      break; // 8-12 steps
+    case 'sustained': break; // 12-16 steps
+    case 'drone':     break; // 16-32 steps
+  }
+
+  // Timing feel → syncopation probability
+  switch (params.timingFeel) {
+    case 'rigid': config.snareAccentToSyncopation = 0.2; break;
+    case 'tight': config.snareAccentToSyncopation = 0.35; break;
+    case 'loose': config.snareAccentToSyncopation = 0.5; break;
+    case 'swung': config.snareAccentToSyncopation = 0.65; break;
+    case 'heavy': config.snareAccentToSyncopation = 0.8; break;
+  }
+
+  // Kick-Hat coupling → hat density sensitivity
+  switch (params.kickHat) {
+    case 'independent': config.hatDensitySensitivity = 0.3; break;
+    case 'weak':        config.hatDensitySensitivity = 0.4; break;
+    case 'medium':      config.hatDensitySensitivity = 0.5; break;
+    case 'strong':      config.hatDensitySensitivity = 0.7; break;
+    case 'locked':      config.hatDensitySensitivity = 0.9; break;
+  }
+
+  // Kick-Snare → ghost probability + syncopation direction
+  switch (params.kickSnare) {
+    case 'ignore':    config.kickToBassProbability = 0.6; break;
+    case 'bounce':    config.kickToBassProbability = 0.8; config.snareAccentToSyncopation = (config.snareAccentToSyncopation ?? 0.5) + 0.15; break;
+    case 'follow':    config.kickToBassProbability = 0.95; break;
+    case 'anticipate': config.kickToBassProbability = 0.7; break;
+  }
+
+  if (Object.values(nm).some(v => v !== undefined)) config.noteMap = { ...DEFAULT_NOTE_MAP, ...nm };
+  return config;
+}
+
+/**
+ * Generate bass from rhythm, with snare-kick relationship awareness.
+ * If kickSnare = 'anticipate', bass can predict the snare.
+ * If kickSnare = 'bounce', bass bounces off the snare.
+ */
+export function generateBassFromRhythmGenotype(
+  tracks: RhythmTrack[],
+  cycleLength: number,
+  genotype: {
+    kickSnare?: string;
+    kickHat?: string;
+    register?: string;
+    noteLength?: string;
+    timingFeel?: string;
+  } = {},
+): BassEvent[] {
+  const cfg = configFromGenotype(genotype);
+  const events = generateBassFromRhythm(tracks, cycleLength, cfg);
+
+  // Additional rules based on kickSnare relationship
+  if (genotype.kickSnare === 'anticipate') {
+    const snareEvents = eventsForVoice(tracks, 'snare');
+    for (const s of snareEvents) {
+      // Bass anticipates snare: hit 1 step before each snare
+      const antePos = (s.position - 1 + cycleLength) % cycleLength;
+      if (!events.some(e => e.position === antePos)) {
+        events.push(createBassEvent(antePos, cfg.noteMap?.offBeat ?? 38, 1, true, false));
+      }
+    }
+  }
+
+  if (genotype.kickSnare === 'bounce') {
+    const kickEvents = eventsForVoice(tracks, 'kick');
+    for (const k of kickEvents) {
+      // Bass also hits 1 step after each kick (bounce)
+      const bouncePos = (k.position + 1) % cycleLength;
+      if (!events.some(e => e.position === bouncePos)) {
+        events.push(createBassEvent(bouncePos, cfg.noteMap?.fifth ?? 43, 1, k.accent, false));
+      }
+    }
+  }
+
+  // Apply note length from genotype to all events
+  if (genotype.noteLength) {
+    const durations: Record<string, number> = {
+      micro: 1, staccato: 1, short: 2, medium: 4, long: 8, sustained: 12, drone: 16,
+    };
+    const dur = durations[genotype.noteLength];
+    for (const e of events) e.duration = dur;
+  }
+
+  return mergeDuplicatePositions(events.sort((a, b) => a.position - b.position));
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function eventsForVoice(
