@@ -8,6 +8,8 @@ import { generateBassFromRhythm } from './engine/bassLinkage';
 import type { MutationConfig } from './engine/mutation';
 import { audioEngine, AudioState } from './engine/audioEngine';
 import { downloadMidi } from './engine/midi';
+import { storage } from './engine/persistence';
+import type { PresetRecord } from './engine/persistence';
 import Knob from './components/Knob';
 import './App.css';
 
@@ -229,6 +231,40 @@ export default function App() {
   const [bassGenerated, setBassGenerated] = useState(false);
   const [playState, setPlayState] = useState<AudioState>(AudioState.Stopped);
   const [currentStep, setCurrentStep] = useState(-1);
+  const [savedPresets, setSavedPresets] = useState<PresetRecord[]>([]);
+  const [persistMsg, setPersistMsg] = useState('');
+  const [saveName, setSaveName] = useState('');
+
+  // Load saved presets on mount
+  useState(() => {
+    storage.init().then(() => {
+      storage.loadAllPresets().then(records => setSavedPresets(records));
+    });
+  });
+
+  const handleSavePreset = useCallback(async () => {
+    const name = saveName.trim() || currentPreset.name;
+    const record = storage.createRecord(currentPreset, name);
+    await storage.savePreset(record);
+    const all = await storage.loadAllPresets();
+    setSavedPresets(all);
+    setSaveName('');
+    setPersistMsg(`\u2713 Saved "${name}"`);
+    setTimeout(() => setPersistMsg(''), 2000);
+  }, [currentPreset, saveName]);
+
+  const handleLoadPreset = useCallback((record: PresetRecord) => {
+    setCurrentPreset(record.organism);
+    setSelectedCell(null);
+    setPersistMsg(`Loaded "${record.name}"`);
+    setTimeout(() => setPersistMsg(''), 1500);
+  }, []);
+
+  const handleDeletePreset = useCallback(async (id: string) => {
+    await storage.deletePreset(id);
+    const all = await storage.loadAllPresets();
+    setSavedPresets(all);
+  }, []);
 
   // Update a single event in the current organism (immutable)
   const updateEvent = useCallback((trackId: string, position: number, updates: Partial<any>) => {
@@ -625,6 +661,40 @@ export default function App() {
                 onClick={handleGenerateBass}>⚡ Generate Bass from Rhythm</button>
               <button className="btn btn-midi-panel" style={{ marginTop: 4, width: '100%' }}
                 onClick={() => downloadMidi(currentPreset, 4)}>♪ Export MIDI (4 bars)</button>
+            </div>
+          </div>
+
+          {/* Save/Load Presets */}
+          <div className="panel persist-panel">
+            <div className="panel-header">
+              <span className="section-icon">💾</span>
+              <span className="panel-title">Presets</span>
+              {persistMsg && <span className="persist-msg">{persistMsg}</span>}
+            </div>
+            <div className="persist-content">
+              <div className="save-row">
+                <input className="persist-input" type="text" placeholder="Preset name..."
+                  value={saveName} onChange={e => setSaveName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSavePreset()} />
+                <button className="btn btn-save" onClick={handleSavePreset}>Save</button>
+              </div>
+              {savedPresets.length > 0 && (
+                <div className="saved-list">
+                  <div className="saved-label">Saved ({savedPresets.length})</div>
+                  <div className="saved-scroll">
+                    {savedPresets.map(r => (
+                      <div key={r.id} className="saved-item" title={r.description || r.name}>
+                        <span className="saved-name" onClick={() => handleLoadPreset(r)}>{r.name}</span>
+                        <span className="saved-time">{new Date(r.updatedAt).toLocaleDateString()}</span>
+                        <button className="saved-delete" onClick={() => handleDeletePreset(r.id)}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {savedPresets.length === 0 && (
+                <div className="saved-empty">No saved presets yet. Play with the wheels and save your groove!</div>
+              )}
             </div>
           </div>
         </div>

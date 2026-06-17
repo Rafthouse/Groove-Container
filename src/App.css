@@ -544,6 +544,83 @@ body {
 }
 .btn-midi-panel:hover { background: rgba(96, 165, 250, 0.25); color: #70b5ff; }
 
+.persist-panel { display: flex; flex-direction: column; }
+.persist-content { padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+.persist-msg {
+  margin-left: auto;
+  font-size: 10px;
+  color: #28FF6A;
+  animation: fade-in-out 2s;
+}
+@keyframes fade-in-out {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.save-row { display: flex; gap: 4px; }
+.persist-input {
+  flex: 1;
+  background: var(--panel-hi);
+  border: 1px solid #1f1f2e;
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: var(--text);
+  font-size: 11px;
+  outline: none;
+}
+.persist-input:focus { border-color: var(--accent); }
+
+.btn-save {
+  background: linear-gradient(180deg, #28FF6A 0%, #18d850 100%);
+  color: #000;
+  border: none;
+  padding: 4px 14px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.btn-save:active { transform: scale(0.96); }
+
+.saved-list { display: flex; flex-direction: column; gap: 4px; }
+.saved-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+.saved-scroll { max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; scrollbar-width: thin; }
+.saved-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  background: var(--panel-hi);
+  border-radius: 4px;
+  font-size: 11px;
+}
+.saved-name {
+  flex: 1;
+  cursor: pointer;
+  color: var(--text);
+}
+.saved-name:hover { color: var(--accent); }
+.saved-time { font-size: 9px; color: var(--text-dim); font-family: var(--mono); }
+.saved-delete {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0 2px;
+}
+.saved-delete:hover { color: var(--danger); }
+.saved-empty {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-style: italic;
+  padding: 6px 0;
+}
+
 .btn-danger-sm {
   background: rgba(248, 113, 113, 0.15);
   color: var(--danger);
