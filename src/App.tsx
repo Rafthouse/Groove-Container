@@ -7,6 +7,7 @@ import { mutateOrganism } from './engine/mutation';
 import { generateBassFromRhythm } from './engine/bassLinkage';
 import type { MutationConfig } from './engine/mutation';
 import { audioEngine, AudioState } from './engine/audioEngine';
+import { downloadMidi } from './engine/midi';
 import Knob from './components/Knob';
 import './App.css';
 
@@ -386,6 +387,9 @@ export default function App() {
           <button className={`btn btn-generate-bass ${bassGenerated ? 'flash' : ''}`} onClick={handleGenerateBass}>
             ⚡ Generate Bass
           </button>
+          <button className="btn btn-midi" onClick={() => downloadMidi(currentPreset, 4)}>
+            ♪ Export MIDI
+          </button>
           <span className="badge">{selectedGenus}</span>
           <span className="badge-sm">{currentPreset.name}</span>
         </div>
@@ -619,6 +623,8 @@ export default function App() {
               </span></div>
               <button className="btn btn-apply" style={{ marginTop: 8, width: '100%' }}
                 onClick={handleGenerateBass}>⚡ Generate Bass from Rhythm</button>
+              <button className="btn btn-midi-panel" style={{ marginTop: 4, width: '100%' }}
+                onClick={() => downloadMidi(currentPreset, 4)}>♪ Export MIDI (4 bars)</button>
             </div>
           </div>
         </div>
