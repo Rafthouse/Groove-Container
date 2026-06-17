@@ -92,13 +92,19 @@ function DnaRadar({ dna }: { dna: GrooveDNA }) {
 // ─── Taxonomy Data ────────────────────────────────────────────────────────────
 
 const TAXONOMY_DATA: Record<string, Record<string, Record<string, string[]>>> = {
-  'Electronic Music': {
-    'House': { 'Deep House': ['Foundations', 'Sunset', 'Ghost Drift'], 'Micro House': ['M1', 'Texture', 'Ratcheted', 'Perc 9'], 'Minimal House': ['Groove'], 'Tech House': ['Drive'], 'Dub House': ['Stepper'], 'Chicago House': ['Jack'] },
-    'Techno': { 'Dub Techno': ['Deep', 'Space', 'Texture'], 'Deep Techno': ['Pulse'], 'Detroit Techno': ['Foundation'], 'Hypnotic Techno': ['Cycle', 'Hat 13', 'Bass 11'], 'Industrial Techno': ['Minimal'] },
-    'UK Garage': { '2-Step': ['Foundation', 'Swing', 'Max Swing'], 'Future Garage': ['Atmosphere'], 'Speed Garage': ['Vibe'], 'Breakstep': ['Roller'] },
-    'Breakbeat': { 'Breakbeat': ['Classic'], 'Drum and Bass': ['Stepper'], 'Jungle': ['Rhythm'], 'Nu Skool': ['Funk'] },
-    'IDM': { 'Experimental': ['Glitch Study', 'Rhythm', 'Glitch Hop'], 'Ambient Rhythms': ['Atmospheric'], 'Generative': ['Core'] },
-    'Minimal': { 'Micro House': ['Deep'], 'Dub Techno (Minimal)': ['Pure'], 'Reductionist': ['One'] },
+  'Electronic Dance Music': {
+    'House': { 'Deep House': ['Swung Deep House'], 'Chicago House': ['Jackin\''], 'Tech House': ['Tight Tech'], 'Minimal House': ['Pulse'] },
+    'Techno': { 'Dub Techno': ['Deep Space'], 'Deep Techno': ['Pulse'], 'Detroit Techno': ['Foundation'], 'Hypnotic Techno': ['Cyclic'], 'Industrial Techno': ['Reduced'] },
+    'UK Garage': { '2-Step': ['Swing Foundation', 'Atmospheric'], 'Speed Garage': ['Tight'], 'Breakstep': ['Garage-Break Hybrid'] },
+    'Breakbeat': { 'Breakbeat': ['Classic Break'], 'Drum and Bass': ['Tech Step'], 'Jungle': ['Ragga Break'], 'Nu Skool': ['Funky Break'] },
+    'Electro': { 'Electro Breaks': ['Foundation', 'Funky'] },
+    'Progressive House': { 'Progressive House': ['Building Groove', 'Deep Progressive'] },
+    'Dub': { 'Dub': ['Stepper', 'Space'] },
+    'Minimal': { 'Reductionist': ['One'] },
+  },
+  'Experimental': {
+    'IDM': { 'IDM': ['Glitch', 'Polymetric'], 'Experimental': ['Open Form', 'Glitch Hop'] },
+    'Ambient': { 'Ambient Rhythms': ['Slow Pulse', 'Glitch Ambient'] },
   },
 };
 
@@ -237,9 +243,10 @@ function EventDetailPopup({
 export default function App() {
   const presets = useMemo(() => getBuiltInPresets(), []);
   const [currentPreset, setCurrentPreset] = useState<GrooveOrganism>(presets[0]);
-  const [selectedKingdom, setSelectedKingdom] = useState('Electronic Music');
+  const [selectedKingdom, setSelectedKingdom] = useState('Electronic Dance Music');
   const [selectedFamily, setSelectedFamily] = useState('House');
   const [selectedGenus, setSelectedGenus] = useState('Deep House');
+  const [selectedSpecies, setSelectedSpecies] = useState('Swung Deep House');
   const [mutationConfig, setMutationConfig] = useState<MutationConfig>({
     preserveStyle: true, preserveBass: false, preserveRhythm: false,
     preserveComplexity: false, preserveAccents: false, strength: 0.3,
