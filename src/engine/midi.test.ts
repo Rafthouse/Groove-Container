@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { renderOrganismToMidi, serializeMidi, organismToMidiBytes } from './midi';
+import { renderOrganismToMidi, organismToMidiBytes } from './midi';
 import type { GrooveOrganism } from './types';
 
 function makeSimpleOrganism(overrides?: Partial<GrooveOrganism>): GrooveOrganism {
@@ -14,18 +14,18 @@ function makeSimpleOrganism(overrides?: Partial<GrooveOrganism>): GrooveOrganism
       tracks: [
         {
           id: 'kick', name: 'Kick', voice: 'kick', cycleLength: 16,
-          events: [{ position: 0, velocity: 90, probability: 1, accent: true, timingOffset: 0, humanization: 5, ratchet: 1, swing: 0 }],
+          events: [{ position: 0, velocity: 90, probability: 1, accent: true, timingOffset: 0, humanization: 5, ratchet: 1, swing: 0, voice: 'kick' }],
           mute: false, solo: false, volume: 80, pan: 0,
         },
         {
           id: 'snare', name: 'Snare', voice: 'snare', cycleLength: 16,
-          events: [{ position: 4, velocity: 80, probability: 1, accent: false, timingOffset: 0, humanization: 5, ratchet: 1, swing: 0 },
-                   { position: 12, velocity: 80, probability: 1, accent: false, timingOffset: 0, humanization: 5, ratchet: 1, swing: 0 }],
+          events: [{ position: 4, velocity: 80, probability: 1, accent: false, timingOffset: 0, humanization: 5, ratchet: 1, swing: 0, voice: 'snare' },
+                   { position: 12, velocity: 80, probability: 1, accent: false, timingOffset: 0, humanization: 5, ratchet: 1, swing: 0, voice: 'snare' }],
           mute: false, solo: false, volume: 70, pan: 0,
         },
         {
           id: 'ch', name: 'CH', voice: 'closedHat', cycleLength: 8,
-          events: Array.from({ length: 8 }, (_, i) => ({ position: i, velocity: 70, probability: 1, accent: i % 4 === 0, timingOffset: 0, humanization: 5, ratchet: 1, swing: 0 })),
+          events: Array.from({ length: 8 }, (_, i) => ({ position: i, velocity: 70, probability: 1, accent: i % 4 === 0, timingOffset: 0, humanization: 5, ratchet: 1, swing: 0, voice: 'closedHat' as const })),
           mute: false, solo: false, volume: 60, pan: 0,
         },
       ],

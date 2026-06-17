@@ -26,7 +26,8 @@ const mockTransaction = {
   onerror: null as any,
 };
 
-const mockDB = {
+// Mock DB shape (kept for documentation; not currently consumed by the tests below)
+void {
   transaction: vi.fn(() => mockTransaction),
   objectStoreNames: { contains: vi.fn(() => true) },
 };

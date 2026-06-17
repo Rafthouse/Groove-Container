@@ -21,8 +21,8 @@
  */
 
 import type {
-  GrooveOrganism, GrooveDNA, RhythmTrack, BassTrack,
-  PercussionEvent, BassEvent, PercussionVoice, TaxonomyPath,
+  GrooveOrganism, RhythmTrack, BassTrack,
+  PercussionEvent, BassEvent, PercussionVoice,
 } from './types';
 import { computeDNA } from './dna';
 
@@ -107,18 +107,10 @@ export const GENOTYPE_OPTIONS: Record<keyof GrooveGenotype, readonly string[]> =
   polymeter: ['fixed', 'extended', 'rotating', 'polymetric'],
 };
 
-// ─── Helper: pick or clamp ──────────────────────────────────────────────────
-
-function pick<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
+// ─── Helper: range ──────────────────────────────────────────────────────────
 
 function range(min: number, max: number): number {
   return min + Math.random() * (max - min);
-}
-
-function clamp(v: number): number {
-  return Math.max(0, Math.min(1, v));
 }
 
 // ─── Cycle lengths per polymeter type ────────────────────────────────────────
@@ -156,18 +148,6 @@ function swingFromFeel(feel: TimingFeel): number {
   }
 }
 
-// ─── Velocity from accent strategy ───────────────────────────────────────────
-
-function velocityForAccent(accent: boolean, strategy: AccentStrategy): number {
-  if (!accent) return strategy === 'flat' ? 70 : range(40, 70);
-  switch (strategy) {
-    case 'flat':    return 75;
-    case 'rotating': return range(80, 100);
-    case 'euclidean': return range(85, 100);
-    case 'fragmented': return range(70, 100);
-  }
-}
-
 // ─── Generate positions for one voice ────────────────────────────────────────
 
 function generatePositions(
@@ -176,7 +156,6 @@ function generatePositions(
   motion: Motion,
   silence: SilenceStrategy,
 ): number[] {
-  const densityName = density as string;
   const [minEv, maxEv] = eventsPer16(density);
 
   // Adjust target event count for cycle length
@@ -277,7 +256,7 @@ function generatePositions(
 function placeAccents(
   positions: number[],
   strategy: AccentStrategy,
-  cycleLength: number,
+  _cycleLength: number,
 ): Set<number> {
   const accents = new Set<number>();
   if (positions.length === 0) return accents;
@@ -384,7 +363,7 @@ function generateSnareTrack(
   kickPositions: number[],
   cycleLength: number,
   kickSnare: KickSnareRel,
-  timingFeel: TimingFeel,
+  _timingFeel: TimingFeel,
 ): RhythmTrack {
   let positions: number[];
 
@@ -522,7 +501,7 @@ function generateBassTrack(
   cycleLength: number,
   register: Register,
   noteLen: NoteLength,
-  timingFeel: TimingFeel,
+  _timingFeel: TimingFeel,
 ): BassTrack {
   const [minNote, maxNote] = registerToMidiRange(register);
   const [minDur, maxDur] = noteLengthToDuration(noteLen);
@@ -665,7 +644,6 @@ function generateFromGenotypeImpl(
 export function inferGenotype(organism: GrooveOrganism): GrooveGenotype {
   const d = organism.dna;
   const percTracks = organism.wheelA.tracks;
-  const allPerc = percTracks.flatMap(t => t.events);
   const bassEvents = organism.wheelB.tracks.flatMap(t => t.events);
 
   // Rhythm density from DNA

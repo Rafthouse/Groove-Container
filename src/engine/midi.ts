@@ -15,7 +15,7 @@
  *   - No external dependencies — pure arithmetic.
  */
 
-import type { GrooveOrganism, PercussionEvent, BassEvent, RhythmTrack, BassTrack } from './types';
+import type { GrooveOrganism, RhythmTrack, BassTrack } from './types';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -334,9 +334,9 @@ export function organismToMidiBytes(organism: GrooveOrganism, bars: number = 4):
 /**
  * Trigger a browser download of a MIDI file from a GrooveOrganism.
  */
-export function downloadMidi(organism: GrooveOrganism, filename?: string): void {
-  const bytes = organismToMidiBytes(organism);
-  const blob = new Blob([bytes], { type: 'audio/midi' });
+export function downloadMidi(organism: GrooveOrganism, bars: number = 4, filename?: string): void {
+  const bytes = organismToMidiBytes(organism, bars);
+  const blob = new Blob([bytes as BlobPart], { type: 'audio/midi' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -364,7 +364,7 @@ export function downloadMidiStems(organism: GrooveOrganism): void {
       tracks: [track],
     };
     const bytes = serializeMidi(stemProject);
-    const blob = new Blob([bytes], { type: 'audio/midi' });
+    const blob = new Blob([bytes as BlobPart], { type: 'audio/midi' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

@@ -14,7 +14,6 @@ import type {
   GrooveDNA,
   PercussionEvent,
   BassEvent,
-  PercussionVoice,
   RhythmTrack,
   WheelA,
   BassTrack,
@@ -26,15 +25,15 @@ import { computeDNA } from './dna';
 
 export interface MutationConfig {
   /** Preserve the overall style (keep density, syncopation, complexity constant). */
-  preserveStyle?: boolean;
+  preserveStyle: boolean;
   /** Don't touch Wheel B events. */
-  preserveBass?: boolean;
+  preserveBass: boolean;
   /** Don't touch Wheel A events. */
-  preserveRhythm?: boolean;
+  preserveRhythm: boolean;
   /** Keep complexity within a narrow band of original. */
-  preserveComplexity?: boolean;
+  preserveComplexity: boolean;
   /** Keep accent positions stable. */
-  preserveAccents?: boolean;
+  preserveAccents: boolean;
   /** How much to mutate: 0.0 = none, 1.0 = full range. */
   strength: number;
 }

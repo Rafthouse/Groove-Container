@@ -175,7 +175,6 @@ export function computeRandomness(
   if (cycleLength <= 0) return 0;
   // Count how many unique positions are occupied
   const occupied = new Set(events.map((e) => e.position));
-  const ratio = occupied.size / events.length;
   // If all events are on unique positions → more random
   // If events repeat on same positions → less random
   const uniqueRatio = events.length > 0 ? occupied.size / events.length : 0;

@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import type { PointerEvent as ReactPointerEvent, KeyboardEvent, ChangeEvent } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 
 interface KnobProps {
   label: string;

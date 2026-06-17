@@ -3,10 +3,8 @@ import type { PercussionEvent, BassEvent } from './types';
 import {
   computeDensity,
   computeSyncopation,
-  computeComplexity,
   computeAggression,
   computeRepetition,
-  computeRandomness,
   computeDNA,
 } from './dna';
 
@@ -75,12 +73,12 @@ describe('DNA analysis', () => {
 
     it('is higher with accented events', () => {
       const soft = [
-        { velocity: 30, accent: false, timingOffset: 0, humanization: 0, ratchet: 1, swing: 0, probability: 0.5 },
-        { velocity: 40, accent: false, timingOffset: 0, humanization: 0, ratchet: 1, swing: 0, probability: 0.5 },
+        { position: 0, velocity: 30, accent: false, timingOffset: 0, humanization: 0, ratchet: 1, swing: 0, probability: 0.5 },
+        { position: 4, velocity: 40, accent: false, timingOffset: 0, humanization: 0, ratchet: 1, swing: 0, probability: 0.5 },
       ];
       const loud = [
-        { velocity: 90, accent: true, timingOffset: 0, humanization: 0, ratchet: 1, swing: 0, probability: 1 },
-        { velocity: 100, accent: true, timingOffset: 0, humanization: 0, ratchet: 1, swing: 0, probability: 1 },
+        { position: 0, velocity: 90, accent: true, timingOffset: 0, humanization: 0, ratchet: 1, swing: 0, probability: 1 },
+        { position: 4, velocity: 100, accent: true, timingOffset: 0, humanization: 0, ratchet: 1, swing: 0, probability: 1 },
       ];
       expect(computeAggression(loud)).toBeGreaterThan(computeAggression(soft));
     });

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import type { GrooveOrganism, GrooveDNA, PercussionEvent, BassEvent, RhythmTrack, BassTrack } from './engine/types';
+import type { GrooveOrganism, GrooveDNA, PercussionEvent, BassEvent } from './engine/types';
 import type { PercussionVoice } from './engine/types';
 import { getBuiltInPresets } from './engine/presets';
 import { computeDNA } from './engine/dna';
@@ -269,59 +269,6 @@ export default function App() {
     });
   });
 
-  // ── Keyboard shortcuts ────────────────────────────────────────────
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't capture when typing in inputs
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
-
-      switch (e.code) {
-        case 'Space':
-          e.preventDefault();
-          handlePlayStop();
-          break;
-        case 'KeyM':
-          // Toggle mute on selected track (try bass, else first perc track)
-          const firstPerc = currentPreset.wheelA.tracks.find(t => t.voice === 'kick');
-          if (firstPerc) {
-            const newMute = !firstPerc.mute;
-            setCurrentPreset(prev => ({
-              ...prev, wheelA: { tracks: prev.wheelA.tracks.map(t =>
-                t.id === firstPerc.id ? { ...t, mute: newMute } : t) }
-            }));
-            audioEngine.muteVoice(firstPerc.id, newMute);
-          }
-          break;
-        case 'KeyS':
-          // Save preset
-          const name = currentPreset.name;
-          const record = storage.createRecord(currentPreset, name);
-          storage.savePreset(record).then(() => {
-            storage.loadAllPresets().then(records => setSavedPresets(records));
-            setPersistMsg(`\u2713 Saved "${name}"`);
-            setTimeout(() => setPersistMsg(''), 2000);
-          });
-          break;
-        case 'KeyB':
-          // Generate bass
-          handleGenerateBass();
-          break;
-        case 'KeyR':
-          // Random mutation
-          handleMutate();
-          break;
-        case 'KeyG':
-          // Toggle genes panel
-          setShowGenes(prev => !prev);
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handlePlayStop, handleGenerateBass, handleMutate, currentPreset]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Auto-save session on changes (debounced)
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -415,7 +362,7 @@ export default function App() {
 
   // Generate bass from rhythm (genotype-aware)
   const handleGenerateBass = useCallback(() => {
-    const genotype = inferredGenotype ?? {};
+    const genotype = inferredGenotype ?? DEFAULT_GENOTYPE;
     const bassEvents = generateBassFromRhythmGenotype(
       currentPreset.wheelA.tracks,
       16,
@@ -509,6 +456,60 @@ export default function App() {
     setShowGenes(true);
   }, [currentPreset]);
 
+  // ── Keyboard shortcuts ────────────────────────────────────────────
+  // Declared AFTER all handlers above so that JS temporal-dead-zone
+  // doesn't trip the useEffect closure on first render.
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't capture when typing in inputs
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          handlePlayStop();
+          break;
+        case 'KeyM': {
+          // Toggle mute on selected track (try bass, else first perc track)
+          const firstPerc = currentPreset.wheelA.tracks.find(t => t.voice === 'kick');
+          if (firstPerc) {
+            const newMute = !firstPerc.mute;
+            setCurrentPreset(prev => ({
+              ...prev, wheelA: { tracks: prev.wheelA.tracks.map(t =>
+                t.id === firstPerc.id ? { ...t, mute: newMute } : t) }
+            }));
+            audioEngine.muteVoice(firstPerc.id, newMute);
+          }
+          break;
+        }
+        case 'KeyS': {
+          // Save preset
+          const name = currentPreset.name;
+          const record = storage.createRecord(currentPreset, name);
+          storage.savePreset(record).then(() => {
+            storage.loadAllPresets().then(records => setSavedPresets(records));
+            setPersistMsg(`✓ Saved "${name}"`);
+            setTimeout(() => setPersistMsg(''), 2000);
+          });
+          break;
+        }
+        case 'KeyB':
+          handleGenerateBass();
+          break;
+        case 'KeyR':
+          handleMutate();
+          break;
+        case 'KeyG':
+          setShowGenes(prev => !prev);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handlePlayStop, handleGenerateBass, handleMutate, currentPreset]);
+
   const findEvent = (trackId: string, pos: number) => {
     const allEvents = [...currentPreset.wheelA.tracks.flatMap(t => t.events.map(e => ({ ...e, originalVoice: t.voice, trackId: t.id }))),
       ...currentPreset.wheelB.tracks.flatMap(t => t.events.map(e => ({ ...e, originalVoice: 'bass' as const, trackId: t.id })))];
@@ -524,7 +525,6 @@ export default function App() {
     const pos = Number(posStr);
     const event = findEvent(tid, pos);
     const trackA = currentPreset.wheelA.tracks.find(t => t.id === tid);
-    const trackB = currentPreset.wheelB.tracks.find(t => t.id === tid);
     const voice = trackA?.voice ?? 'bass';
     const color = VOICE_COLORS[voice] || VOICE_COLORS[tid] || '#c084fc';
     return { trackId: tid, position: pos, event, voice, color };

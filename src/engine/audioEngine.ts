@@ -16,7 +16,7 @@
  */
 
 import * as Tone from 'tone';
-import type { GrooveOrganism, RhythmTrack, BassTrack, BassEvent, PercussionEvent } from './types';
+import type { GrooveOrganism, RhythmTrack, BassTrack } from './types';
 
 // ─── Synth Presets ───────────────────────────────────────────────────────────
 
@@ -83,12 +83,15 @@ const VOICE_CONFIGS: Record<SynthVoice, VoiceConfig> = {
 
 // ─── AudioEngine ─────────────────────────────────────────────────────────────
 
-export enum AudioState {
-  Stopped = 'stopped',
-  Starting = 'starting',
-  Playing = 'playing',
-  Stopping = 'stopping',
-}
+// erasableSyntaxOnly forbids `enum` — using a const-object pattern that
+// has the same call sites: `AudioState.Playing` etc. still work.
+export const AudioState = {
+  Stopped: 'stopped',
+  Starting: 'starting',
+  Playing: 'playing',
+  Stopping: 'stopping',
+} as const;
+export type AudioState = typeof AudioState[keyof typeof AudioState];
 
 export interface PlaybackPosition {
   /** Monotonically increasing global 16th-note step. */

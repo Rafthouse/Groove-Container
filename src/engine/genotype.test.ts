@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { generateFromGenotype, inferGenotype, DEFAULT_GENOTYPE } from './genotype';
-import type { GrooveGenotype, GrooveOrganism } from './genotype';
 
 describe('generateFromGenotype', () => {
   it('generates a valid organism with default genotype', () => {
@@ -123,6 +122,8 @@ describe('inferGenotype', () => {
   it('DNA axes correlate with genotype', () => {
     const org = generateFromGenotype({ rhythmDensity: 'high' }, 'Density Test');
     const g = inferGenotype(org);
+    // Sanity: inference still produces a usable genotype
+    expect(g.rhythmDensity).toMatch(/^(low|medium-low|medium|medium-high|high)$/);
     // High density genotype should produce density > 0.3
     expect(org.dna.density).toBeGreaterThan(0.3);
   });

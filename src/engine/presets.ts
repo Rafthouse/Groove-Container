@@ -11,8 +11,6 @@
 import type {
   GrooveOrganism,
   GrooveDNA,
-  WheelA,
-  WheelB,
   PercussionEvent,
   BassEvent,
   RhythmTrack,
@@ -186,7 +184,6 @@ const HAT_GARAGE = [0, 2, 4, 6, 8, 10, 12, 14].map(p => makePercEvent('closedHat
 
 // Open hats
 const OH_SPARSE = [2, 6, 10, 14].filter(() => Math.random() > 0.5).map(p => makePercEvent('openHat', p, 70, true, 0.5));
-const OH_TECHNO = [6, 10].map(p => makePercEvent('openHat', p, 75, true, 0.6));
 
 // ─── Percussion ────────────────────────────────────────────────────────────────
 

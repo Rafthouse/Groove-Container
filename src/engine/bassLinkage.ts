@@ -285,7 +285,7 @@ function eventsForVoice(
     .flatMap((t) => t.events);
 }
 
-function isGhostKick(event: PercussionEvent, allKicks: PercussionEvent[]): boolean {
+function isGhostKick(event: PercussionEvent, _allKicks: PercussionEvent[]): boolean {
   // A "ghost kick" is a kick with low velocity (< 40) or low probability (< 0.3)
   return event.velocity < 40 || event.probability < 0.3;
 }
@@ -337,7 +337,31 @@ function createGraceNote(
   };
 }
 
-function pickDuration(min: number, max: number): number {
+// Subtle ghost bass note triggered by hat density (Rule 3).
+// Lower velocity than a grace note; sits in time, not before.
+function createGhostNote(
+  position: number,
+  noteMap: BassNoteMap,
+): BassEvent {
+  return {
+    position,
+    velocity: 22,
+    probability: 0.5,
+    accent: false,
+    timingOffset: 0,
+    humanization: 8,
+    ratchet: 1,
+    swing: 0,
+    pitch: noteMap.ghost,
+    duration: 1,
+    tie: false,
+    slide: false,
+    ghost: true,
+    mute: false,
+  };
+}
+
+function pickDuration(_min: number, _max: number): number {
   const durations = [1, 2, 4, 8];
   return durations[Math.floor(Math.random() * durations.length)];
 }
