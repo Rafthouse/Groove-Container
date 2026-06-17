@@ -72,6 +72,28 @@ body {
   font-size: 10px;
 }
 
+.btn-generate-bass {
+  background: linear-gradient(180deg, #48b838 0%, #389828 100%);
+  color: #fff;
+  border: none;
+  padding: 5px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.4);
+  transition: transform 0.1s;
+}
+.btn-generate-bass:hover { background: linear-gradient(180deg, #58c848 0%, #48a838 100%); }
+.btn-generate-bass:active { transform: scale(0.96); }
+.btn-generate-bass.flash { animation: flash-green 0.6s; }
+@keyframes flash-green {
+  0%, 100% { box-shadow: none; }
+  50% { box-shadow: 0 0 20px rgba(72, 184, 56, 0.6); }
+}
+
 /* ─── Main Layout ──────────────────────────────────────────────── */
 .main-layout {
   display: flex;
@@ -128,7 +150,8 @@ body {
 .wheel-b .wheel-header { background: rgba(72, 184, 56, 0.06); }
 .wheel-icon { font-size: 10px; opacity: 0.5; }
 .wheel-title { font-weight: 600; font-size: 12px; }
-.wheel-voices { margin-left: auto; font-size: 10px; color: var(--text-dim); }
+.wheel-voices { font-size: 10px; color: var(--text-dim); }
+.wheel-hint { margin-left: auto; font-size: 9px; color: var(--text-dim); font-style: italic; }
 
 .wheel-body { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
 .track-strip {
@@ -170,7 +193,7 @@ body {
   max-width: 140px;
 }
 
-/* Event Grid */
+/* Event Grid (interactive) */
 .event-grid {
   display: flex;
   gap: 2px;
@@ -184,9 +207,17 @@ body {
   border: 1px solid rgba(255,255,255,0.06);
   flex-shrink: 0;
   transition: all 0.1s;
+  cursor: pointer;
+  position: relative;
 }
+.event-cell:hover { border-color: rgba(255,255,255,0.2); }
 .event-cell.filled { border-color: transparent; }
 .event-cell.accent { box-shadow: inset 0 0 4px rgba(255,255,255,0.3); }
+.event-cell.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  z-index: 1;
+}
 
 .track-params {
   display: flex;
@@ -222,7 +253,7 @@ body {
   padding: 4px 0;
 }
 
-/* ─── Polymeter Bar ────────────────────────────────────────────── */
+/* ─── Polymeter ────────────────────────────────────────────── */
 .polymeter-bar {
   background: var(--panel);
   border-radius: var(--radius);
@@ -238,11 +269,7 @@ body {
   display: block;
   margin-bottom: 8px;
 }
-.cycle-display {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
+.cycle-display { display: flex; flex-wrap: wrap; gap: 6px; }
 .cycle-chip {
   font-size: 11px;
   padding: 3px 8px;
@@ -251,10 +278,7 @@ body {
   background: var(--panel-hi);
   font-family: var(--mono);
 }
-.cycle-chip.convergence {
-  color: var(--accent);
-  background: var(--accent-dim);
-}
+.cycle-chip.convergence { color: var(--accent); background: var(--accent-dim); }
 
 /* ─── Taxonomy ──────────────────────────────────────────────────── */
 .taxonomy-section {
@@ -362,7 +386,7 @@ body {
   font-weight: 700;
 }
 
-/* ─── DNA Panel ────────────────────────────────────────────────── */
+/* ─── DNA ────────────────────────────────────────────────── */
 .dna-panel { display: flex; flex-direction: column; }
 .dna-radar { width: 100%; max-width: 180px; margin: 8px auto; display: block; }
 .dna-chart { padding: 4px 12px 8px; display: flex; flex-direction: column; gap: 3px; }
@@ -376,7 +400,7 @@ body {
 .diff-title { font-size: 10px; font-weight: 600; color: var(--warn); margin-bottom: 4px; }
 .diff-row { display: flex; justify-content: space-between; font-size: 10px; font-family: var(--mono); padding: 1px 0; }
 
-/* ─── Mutation Panel ──────────────────────────────────────────── */
+/* ─── Mutation ──────────────────────────────────────────── */
 .mutation-panel { display: flex; flex-direction: column; }
 .mutation-preserves { padding: 8px 12px; }
 .mutation-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px; }
@@ -452,6 +476,15 @@ body {
   border: 1px solid #1f1f2e;
 }
 .btn-cancel:hover { border-color: var(--danger); color: var(--danger); }
+.btn-danger-sm {
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  font-size: 10px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.btn-danger-sm:hover { background: rgba(248, 113, 113, 0.25); }
 
 /* ─── Info Panel ──────────────────────────────────────────────── */
 .info-panel { display: flex; flex-direction: column; }
@@ -459,6 +492,81 @@ body {
 .info-row { display: flex; justify-content: space-between; font-size: 11px; }
 .info-key { color: var(--text-dim); }
 .info-val { font-family: var(--mono); color: var(--text); }
+
+/* ─── Event Detail Popup ───────────────────────────────────────── */
+.event-popup-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.event-popup {
+  background: var(--panel);
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  min-width: 380px;
+  max-width: 450px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--text-dim);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--mono);
+}
+.popup-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 16px;
+}
+.popup-close:hover { color: var(--text-hi); }
+.popup-body { padding: 12px; }
+.popup-knobs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.popup-bass-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.popup-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.popup-footer {
+  padding: 8px 12px;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #1f1f2e;
+}
+
+/* ─── Knob ─────────────────────────────────────────────────────── */
+.knob {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2px;
+  cursor: grab;
+}
+.knob:active { cursor: grabbing; }
+.knob-dial { width: 36px; height: 36px; }
+.knob-label { font-size: 9px; color: var(--text-dim); text-align: center; margin-top: 1px; }
+.knob-value { font-size: 10px; color: var(--text); text-align: center; font-family: var(--mono); }
 
 /* ─── Scrollbar ────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }
