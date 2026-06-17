@@ -10,6 +10,8 @@ import { audioEngine, AudioState } from './engine/audioEngine';
 import { downloadMidi } from './engine/midi';
 import { storage } from './engine/persistence';
 import type { PresetRecord } from './engine/persistence';
+import { generateFromGenotype, inferGenotype, DEFAULT_GENOTYPE, GENOTYPE_LABELS, GENOTYPE_OPTIONS } from './engine/genotype';
+import type { GrooveGenotype } from './engine/genotype';
 import Knob from './components/Knob';
 import './App.css';
 
@@ -234,6 +236,18 @@ export default function App() {
   const [savedPresets, setSavedPresets] = useState<PresetRecord[]>([]);
   const [persistMsg, setPersistMsg] = useState('');
   const [saveName, setSaveName] = useState('');
+  const [showGenes, setShowGenes] = useState(false);
+  const [currentGenotype, setCurrentGenotype] = useState<GrooveGenotype>(DEFAULT_GENOTYPE);
+  const [inferredGenotype, setInferredGenotype] = useState<GrooveGenotype | null>(null);
+
+  // Infer genotype when preset changes
+  useState(() => {
+    setCurrentGenotype(prev => {
+      const inferred = inferGenotype(currentPreset);
+      setInferredGenotype(inferred);
+      return prev; // keep previous genotype edits until user edits again
+    });
+  });
 
   // Load saved presets on mount
   useState(() => {
@@ -388,6 +402,21 @@ export default function App() {
   }, [playState, currentPreset]);
 
   // Find event at position for popup
+  const handleRegenerate = useCallback(() => {
+    const org = generateFromGenotype(currentGenotype, `${currentPreset.name} (Gen)`);
+    setCurrentPreset(org);
+    setShowGenes(false);
+    const inferred = inferGenotype(org);
+    setCurrentGenotype(inferred);
+  }, [currentGenotype, currentPreset.name]);
+
+  const handleInferGenotype = useCallback(() => {
+    const inferred = inferGenotype(currentPreset);
+    setInferredGenotype(inferred);
+    setCurrentGenotype(inferred);
+    setShowGenes(true);
+  }, [currentPreset]);
+
   const findEvent = (trackId: string, pos: number) => {
     const allEvents = [...currentPreset.wheelA.tracks.flatMap(t => t.events.map(e => ({ ...e, originalVoice: t.voice, trackId: t.id }))),
       ...currentPreset.wheelB.tracks.flatMap(t => t.events.map(e => ({ ...e, originalVoice: 'bass' as const, trackId: t.id })))];
@@ -683,6 +712,54 @@ export default function App() {
                 <button className="btn btn-cancel" onClick={() => { setShowPreview(false); setMutatedPreview(null); }}>✗ Discard</button>
               </>
             )}
+          </div>
+
+          {/* Genes */}
+          <div className="panel genes-panel">
+            <div className="panel-header">
+              <span className="section-icon">🧬</span>
+              <span className="panel-title">Groove Genes</span>
+              {currentGenotype && showGenes && <span className="preview-badge">Editing</span>}
+            </div>
+            <div className="genes-content">
+              {showGenes ? (
+                <>
+                  <div className="genes-grid">
+                    {(Object.keys(GENOTYPE_LABELS) as (keyof GrooveGenotype)[]).map(key => (
+                      <div key={key} className="gene-row">
+                        <span className="gene-label">{GENOTYPE_LABELS[key]}</span>
+                        <select className="gene-select" value={currentGenotype[key]}
+                          onChange={e => setCurrentGenotype(prev => ({ ...prev, [key]: e.target.value as any }))}>
+                          {GENOTYPE_OPTIONS[key].map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="genes-actions">
+                    <button className="btn btn-apply" onClick={handleRegenerate}>⟳ Generate from Genes</button>
+                    <button className="btn btn-cancel" onClick={() => setShowGenes(false)}>✗ Close</button>
+                  </div>
+                </>
+              ) : (
+                <div className="genes-info">
+                  <p className="genes-desc">Groove Genes describe the <em>intent</em> of a groove — not what it sounds like, but what it <em>aims</em> to sound like.</p>
+                  <p className="genes-status">
+                    {inferredGenotype ? (
+                      <>Current: <span className="gene-pills">
+                        {(['motion', 'silence', 'polymeter'] as const).map(k => (
+                          <span key={k} className="gene-pill">{inferredGenotype[k]}</span>
+                        ))}
+                      </span></>
+                    ) : 'Select a groove to infer genes'}
+                  </p>
+                  <button className="btn btn-mutate" onClick={handleInferGenotype} style={{ margin: '8px 12px 10px' }}>
+                    🔬 Infer & Edit Genes
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Mutation */}
