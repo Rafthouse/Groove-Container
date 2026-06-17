@@ -316,8 +316,14 @@ export default function App() {
       const tracksA = prev.wheelA.tracks.map(t =>
         t.id === trackId ? { ...t, events: updateInList(t.events) } : t
       );
+      // Mark touched bass events as manually edited so Generate Bass
+      // preserves them on regeneration (Modal Bass Engine respects the flag).
+      const updateBassList = (events: BassEvent[]): BassEvent[] =>
+        events.map(e => e.position === position
+          ? { ...e, ...updates, editedManually: true }
+          : e);
       const tracksB = prev.wheelB.tracks.map(t =>
-        t.id === trackId ? { ...t, events: updateInList(t.events) } : t
+        t.id === trackId ? { ...t, events: updateBassList(t.events) } : t
       );
       return { ...prev, wheelA: { tracks: tracksA }, wheelB: { tracks: tracksB } };
     });
@@ -360,19 +366,33 @@ export default function App() {
     }));
   }, []);
 
-  // Generate bass from rhythm (genotype-aware)
-  const handleGenerateBass = useCallback(() => {
-    const genotype = inferredGenotype ?? DEFAULT_GENOTYPE;
+  // Generate bass from rhythm (modal + rhythm-aware).
+  // `forceRegenerate=true` ignores the editedManually flag and rewrites
+  // every position.
+  const handleGenerateBass = useCallback((forceRegenerate: boolean = false) => {
+    // Active genotype: prefer user-tweaked currentGenotype over the
+    // inferred one so the new bass genes (scale/phrase/gravity/interval)
+    // actually take effect when the user changes the dropdowns.
+    const genotype = currentGenotype ?? inferredGenotype ?? DEFAULT_GENOTYPE;
+    const existingBass = currentPreset.wheelB.tracks[0]?.events ?? [];
+    const preserve = forceRegenerate ? [] : existingBass;
+    const cycleLen = currentPreset.wheelB.tracks[0]?.cycleLength ?? 16;
     const bassEvents = generateBassFromRhythmGenotype(
       currentPreset.wheelA.tracks,
-      16,
+      cycleLen,
       {
         kickSnare: genotype.kickSnare,
         kickHat: genotype.kickHat,
         register: genotype.register,
         noteLength: genotype.noteLength,
         timingFeel: genotype.timingFeel,
-      }
+        scaleFamily: genotype.scaleFamily,
+        phraseBehavior: genotype.phraseBehavior,
+        harmonicGravity: genotype.harmonicGravity,
+        intervalPreference: genotype.intervalPreference,
+      },
+      preserve,
+      Date.now() & 0x7fffffff,
     );
     const updated = {
       ...currentPreset,
@@ -386,7 +406,12 @@ export default function App() {
     setCurrentPreset(updated);
     setBassGenerated(true);
     setTimeout(() => setBassGenerated(false), 2000);
-  }, [currentPreset, inferredGenotype]);
+  }, [currentPreset, currentGenotype, inferredGenotype]);
+
+  /** Wipe edits and regenerate the bass from scratch. */
+  const handleForceRegenerateBass = useCallback(() => {
+    handleGenerateBass(true);
+  }, [handleGenerateBass]);
 
   // Filter presets
   const filteredPresets = useMemo(() => presets.filter(p => {
@@ -454,6 +479,22 @@ export default function App() {
     setInferredGenotype(inferred);
     setCurrentGenotype(inferred);
     setShowGenes(true);
+  }, [currentPreset]);
+
+  // ── Playback ↔ organism sync ───────────────────────────────────────
+  // Keep the audio engine's organism reference in lock-step with React
+  // state.  This is the load-bearing fix for "playback breaks after I
+  // hit Generate Bass / change a preset / edit a note":
+  //
+  //   * audioEngine.setOrganism() swaps the scheduler's pointer atomically
+  //     without stopping the clock or resetting voices.
+  //   * It's a no-op when not playing (no audible side effect).
+  //   * Runs on every organism change, so the scheduler is never stale.
+  //
+  // The dependency intentionally narrows to `currentPreset` — bpm/swing
+  // are subfields and propagate via setOrganism's scalar update path.
+  useEffect(() => {
+    audioEngine.setOrganism(currentPreset);
   }, [currentPreset]);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────
@@ -545,8 +586,11 @@ export default function App() {
           <button className={`btn btn-play ${playState === AudioState.Playing ? 'playing' : ''}`} onClick={handlePlayStop}>
             {playState === AudioState.Playing || playState === AudioState.Starting ? '■ STOP' : '▶ PLAY'}
           </button>
-          <button className={`btn btn-generate-bass ${bassGenerated ? 'flash' : ''}`} onClick={handleGenerateBass}>
+          <button className={`btn btn-generate-bass ${bassGenerated ? 'flash' : ''}`} onClick={() => handleGenerateBass()} title="Generate bass — preserves your manual edits">
             ⚡ Generate Bass
+          </button>
+          <button className="btn btn-force-regen" onClick={handleForceRegenerateBass} title="Force regenerate — discards manual edits">
+            ↻
           </button>
           <button className="btn btn-midi" onClick={() => downloadMidi(currentPreset, 4)}>
             ♪ MIDI
@@ -912,7 +956,7 @@ export default function App() {
                 {currentPreset.wheelA.tracks.reduce((s, t) => s + t.events.length, 0) + currentPreset.wheelB.tracks.reduce((s, t) => s + t.events.length, 0)}
               </span></div>
               <button className="btn btn-apply" style={{ marginTop: 8, width: '100%' }}
-                onClick={handleGenerateBass}>⚡ Generate Bass from Rhythm</button>
+                onClick={() => handleGenerateBass()}>⚡ Generate Bass from Rhythm</button>
               <button className="btn btn-midi-panel" style={{ marginTop: 4, width: '100%' }}
                 onClick={() => downloadMidi(currentPreset, 4)}>♪ Export MIDI (4 bars)</button>
             </div>

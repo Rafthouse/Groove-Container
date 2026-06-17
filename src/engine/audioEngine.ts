@@ -179,6 +179,45 @@ export class AudioEngine {
     }
   }
 
+  /**
+   * Live-replace the organism the scheduler reads from.  Safe to call at
+   * any time, including mid-playback.  No clock reset, no voice rebuild
+   * (uses cached synths/channels).  Use this from React to keep audio in
+   * sync with state changes — bass regeneration, preset switch, knob
+   * edits, mutation — without ever stopping playback.
+   */
+  setOrganism(organism: GrooveOrganism) {
+    const prev = this._organism;
+    this._organism = organism;
+
+    // Bring matching scalar fields up to date without restarting the clock.
+    if (organism.bpm !== this._bpm) this.updateBpm(organism.bpm);
+    if (organism.swing !== this._swing) this._swing = organism.swing;
+
+    // Ensure new voices have backing synths (no-op if already present).
+    if (!prev || prev.wheelA.tracks.length !== organism.wheelA.tracks.length) {
+      for (const t of organism.wheelA.tracks) {
+        this.ensureVoice(t.id, t.voice as SynthVoice);
+      }
+    } else {
+      for (const t of organism.wheelA.tracks) {
+        if (!this.chans.has(t.id)) this.ensureVoice(t.id, t.voice as SynthVoice);
+      }
+    }
+    for (const t of organism.wheelB.tracks) {
+      if (!this.chans.has(t.id)) {
+        this.ensureBassSynth();
+        const panner = new Tone.Panner(0).connect(this.masterGain);
+        const gain = new Tone.Gain(t.volume / 100).connect(panner);
+        this.chans.set(t.id, { gain, panner });
+        if (this.bassSynth) {
+          this.bassSynth.disconnect();
+          this.bassSynth.connect(gain);
+        }
+      }
+    }
+  }
+
   updateBpm(bpm: number) {
     this._bpm = bpm;
     if (this.clock) {
@@ -193,12 +232,25 @@ export class AudioEngine {
   // ── Playback Control ──────────────────────────────────────────────
 
   async start() {
-    if (this._state === AudioState.Playing) return;
+    if (this._state === AudioState.Playing || this._state === AudioState.Starting) return;
     this._state = AudioState.Starting;
     this.onStateChange?.(AudioState.Starting);
 
     await Tone.start();
+    // Resume the underlying AudioContext if a browser autoplay policy
+    // suspended it. This is the most common silent-playback culprit.
+    const ctx = Tone.getContext();
+    if (ctx.state !== 'running') {
+      try { await ctx.resume(); } catch {}
+    }
     await Tone.getTransport().start();
+
+    // Tear down any stale clock from a previous start before creating a
+    // new one — without this, a second start() leaks an extra tick loop.
+    if (this.clock) {
+      try { this.clock.stop(0); this.clock.dispose(); } catch {}
+      this.clock = null;
+    }
 
     this._globalStep = 0;
     const hz = this.bpmToHz(this._bpm);
@@ -207,7 +259,6 @@ export class AudioEngine {
       this.tick(time);
     }, hz);
 
-    // Slightly ahead lookahead via transport
     this.clock.start(0);
     this._state = AudioState.Playing;
     this.onStateChange?.(AudioState.Playing);

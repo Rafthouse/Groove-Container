@@ -25,6 +25,8 @@ import type {
   PercussionEvent, BassEvent, PercussionVoice,
 } from './types';
 import { computeDNA } from './dna';
+import type { ScaleFamily } from './scales';
+import type { PhraseBehavior, HarmonicGravity, IntervalPreference } from './phrase';
 
 // ─── Genotype Enum Types ─────────────────────────────────────────────────────
 
@@ -41,6 +43,9 @@ export type SilenceStrategy = 'continuous' | 'breathing' | 'punctuated' | 'fragm
 export type MutationStrength = 'conservative' | 'moderate' | 'aggressive' | 'chaotic';
 export type PolymeterType  = 'fixed' | 'extended' | 'rotating' | 'polymetric';
 
+// Re-exported so the rest of the app can import bass genes from one place.
+export type { ScaleFamily, PhraseBehavior, HarmonicGravity, IntervalPreference };
+
 // ─── Genotype Interface ─────────────────────────────────────────────────────
 
 export interface GrooveGenotype {
@@ -56,6 +61,12 @@ export interface GrooveGenotype {
   silence: SilenceStrategy;
   mutationStrength: MutationStrength;
   polymeter: PolymeterType;
+
+  // ── Modal bass genes (Modal Bass Engine) ───────────────────
+  scaleFamily: ScaleFamily;
+  phraseBehavior: PhraseBehavior;
+  harmonicGravity: HarmonicGravity;
+  intervalPreference: IntervalPreference;
 }
 
 // ─── Default Genotype ───────────────────────────────────────────────────────
@@ -73,6 +84,12 @@ export const DEFAULT_GENOTYPE: GrooveGenotype = {
   silence: 'breathing',
   mutationStrength: 'moderate',
   polymeter: 'fixed',
+
+  // Modal bass defaults
+  scaleFamily: 'aeolian',
+  phraseBehavior: 'walking',
+  harmonicGravity: 'medium',
+  intervalPreference: 'mixed',
 };
 
 // ─── Genotype Display Labels ────────────────────────────────────────────────
@@ -90,6 +107,10 @@ export const GENOTYPE_LABELS: Record<keyof GrooveGenotype, string> = {
   silence: 'Silence',
   mutationStrength: 'Mutation',
   polymeter: 'Polymeter',
+  scaleFamily: 'Bass Scale',
+  phraseBehavior: 'Bass Phrase',
+  harmonicGravity: 'Harm. Gravity',
+  intervalPreference: 'Bass Intervals',
 };
 
 export const GENOTYPE_OPTIONS: Record<keyof GrooveGenotype, readonly string[]> = {
@@ -105,6 +126,17 @@ export const GENOTYPE_OPTIONS: Record<keyof GrooveGenotype, readonly string[]> =
   silence: ['continuous', 'breathing', 'punctuated', 'fragmented', 'absent'],
   mutationStrength: ['conservative', 'moderate', 'aggressive', 'chaotic'],
   polymeter: ['fixed', 'extended', 'rotating', 'polymetric'],
+  scaleFamily: [
+    'ionian','dorian','phrygian','lydian','mixolydian','aeolian','locrian',
+    'majorPentatonic','minorPentatonic',
+    'inSen','hirajoshi','kumoi','iwato','akebono',
+    'harmonicMinor','melodicMinor','doubleHarmonic','hungarianMinor','ukrainianDorian',
+    'persian','arabicHijaz','arabicMaqamRast','balkanPhrygianDominant','balkanGypsy',
+    'wholeTone','octatonic','chromaticConstrained',
+  ],
+  phraseBehavior: ['walking','rolling','pendulum','droneMovement','callResponse','circular','spiral','minimal','hypnotic'],
+  harmonicGravity: ['weak','medium','strong'],
+  intervalPreference: ['stepwise','mixed','leaping'],
 };
 
 // ─── Helper: range ──────────────────────────────────────────────────────────
@@ -743,9 +775,76 @@ export function inferGenotype(organism: GrooveOrganism): GrooveGenotype {
     d.randomness < 0.4 ? 'moderate' :
     d.randomness < 0.6 ? 'aggressive' : 'chaotic';
 
+  // ── Modal bass — infer from existing bass events ───────────────
+  // Pick the most common pitch class to guess scale root; choose a scale
+  // family by interval distribution.  Fall back to aeolian if no bass.
+  let scaleFamily: ScaleFamily = 'aeolian';
+  if (bassEvents.length >= 2) {
+    const pcs = bassEvents.map(e => ((e.pitch % 12) + 12) % 12);
+    const histo = new Array(12).fill(0);
+    for (const pc of pcs) histo[pc]++;
+    const root = histo.indexOf(Math.max(...histo));
+    const relPcs = new Set(pcs.map(p => (p - root + 12) % 12));
+    // Score a few scales by overlap with observed pitch classes.
+    const candidates: ScaleFamily[] = ['aeolian', 'dorian', 'phrygian', 'minorPentatonic', 'hirajoshi', 'wholeTone'];
+    let bestScale: ScaleFamily = 'aeolian';
+    let bestScore = -1;
+    const intervals: Record<ScaleFamily, number[]> = {
+      ionian: [0,2,4,5,7,9,11], dorian: [0,2,3,5,7,9,10], phrygian: [0,1,3,5,7,8,10],
+      lydian: [0,2,4,6,7,9,11], mixolydian: [0,2,4,5,7,9,10], aeolian: [0,2,3,5,7,8,10],
+      locrian: [0,1,3,5,6,8,10],
+      majorPentatonic: [0,2,4,7,9], minorPentatonic: [0,3,5,7,10],
+      inSen: [0,1,5,7,10], hirajoshi: [0,2,3,7,8], kumoi: [0,2,3,7,9], iwato: [0,1,5,6,10], akebono: [0,2,3,7,8],
+      harmonicMinor: [0,2,3,5,7,8,11], melodicMinor: [0,2,3,5,7,9,11], doubleHarmonic: [0,1,4,5,7,8,11],
+      hungarianMinor: [0,2,3,6,7,8,11], ukrainianDorian: [0,2,3,6,7,9,10], persian: [0,1,4,5,6,8,11],
+      arabicHijaz: [0,1,4,5,7,8,10], arabicMaqamRast: [0,2,4,5,7,9,10],
+      balkanPhrygianDominant: [0,1,4,5,7,8,10], balkanGypsy: [0,2,3,6,7,8,11],
+      wholeTone: [0,2,4,6,8,10], octatonic: [0,2,3,5,6,8,9,11], chromaticConstrained: [0,1,2,3,4,5,7],
+    };
+    for (const c of candidates) {
+      const set = new Set(intervals[c]);
+      let s = 0;
+      for (const pc of relPcs) if (set.has(pc)) s++;
+      if (s > bestScore) { bestScore = s; bestScale = c; }
+    }
+    scaleFamily = bestScale;
+  }
+
+  // Phrase behaviour from existing motion + DNA repetition.
+  const phraseBehavior: PhraseBehavior =
+    motion === 'walking'   ? 'walking' :
+    motion === 'rolling'   ? 'rolling' :
+    motion === 'pendulum'  ? 'pendulum' :
+    motion === 'chaotic'   ? 'spiral' :
+    d.repetition > 0.7     ? 'hypnotic' :
+    d.density < 0.25       ? 'minimal' :
+                             'walking';
+
+  const harmonicGravity: HarmonicGravity =
+    d.repetition > 0.6 ? 'strong' :
+    d.repetition > 0.35 ? 'medium' :
+                          'weak';
+
+  // Average interval size (semitones) between consecutive bass notes.
+  let avgJump = 0;
+  if (bassEvents.length >= 2) {
+    const sorted = [...bassEvents].sort((a, b) => a.position - b.position);
+    let n = 0, sum = 0;
+    for (let i = 1; i < sorted.length; i++) {
+      sum += Math.abs(sorted[i].pitch - sorted[i - 1].pitch);
+      n++;
+    }
+    avgJump = n > 0 ? sum / n : 0;
+  }
+  const intervalPreference: IntervalPreference =
+    avgJump < 2.5 ? 'stepwise' :
+    avgJump < 5   ? 'mixed'    :
+                    'leaping';
+
   return {
     rhythmDensity, accentStrategy, timingFeel, entryTiming,
     motion, noteLength, register, kickSnare, kickHat,
     silence, mutationStrength, polymeter,
+    scaleFamily, phraseBehavior, harmonicGravity, intervalPreference,
   };
 }

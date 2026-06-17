@@ -128,11 +128,11 @@ describe('inferGenotype', () => {
     expect(org.dna.density).toBeGreaterThan(0.3);
   });
 
-  it('returns a complete GrooveGenotype with all 12 fields', () => {
+  it('returns a complete GrooveGenotype with all 16 fields (12 rhythm + 4 modal bass)', () => {
     const org = generateFromGenotype({}, 'Complete');
     const g = inferGenotype(org);
     const keys = Object.keys(DEFAULT_GENOTYPE);
-    expect(keys.length).toBe(12);
+    expect(keys.length).toBe(16);
     for (const key of keys) {
       expect(g).toHaveProperty(key);
     }

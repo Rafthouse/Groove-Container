@@ -60,6 +60,13 @@ export interface BassEvent extends GrooveEvent {
   ghost: boolean;
   /** Explicit rest — the position has a duration but no attack. */
   mute: boolean;
+  /**
+   * User-edited flag.  When true, regeneration skips this position so manual
+   * edits (pitch / velocity / length / accent / tie / slide) survive the
+   * next "Generate Bass".  Cleared only when the user requests an explicit
+   * "Force regenerate".
+   */
+  editedManually?: boolean;
 }
 
 // ─── Wheel Types ────────────────────────────────────────────────────────────

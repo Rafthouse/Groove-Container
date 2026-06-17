@@ -15,6 +15,9 @@
  */
 
 import type { BassEvent, PercussionEvent, PercussionVoice, RhythmTrack } from './types';
+import { generateModalBass, registerToRange } from './modalBass';
+import type { ScaleFamily } from './scales';
+import type { PhraseBehavior, HarmonicGravity, IntervalPreference, PhraseLength, RepetitionLevel } from './phrase';
 
 // ─── Bass Note Selection ─────────────────────────────────────────────────────
 
@@ -224,6 +227,14 @@ export function configFromGenotype(params: {
  * Generate bass from rhythm, with snare-kick relationship awareness.
  * If kickSnare = 'anticipate', bass can predict the snare.
  * If kickSnare = 'bounce', bass bounces off the snare.
+ *
+ * When `genotype.scaleFamily` is provided, the modal bass engine takes
+ * over — phrase contour, harmonic gravity and interval preference drive
+ * the line; rhythm is used only as anchor positions.  When the modal
+ * fields are absent, the original rhythm-following heuristic is used.
+ *
+ * `preserveEdited` carries user-edited events forward: positions marked
+ * `editedManually: true` are never overwritten by the generator.
  */
 export function generateBassFromRhythmGenotype(
   tracks: RhythmTrack[],
@@ -234,8 +245,47 @@ export function generateBassFromRhythmGenotype(
     register?: string;
     noteLength?: string;
     timingFeel?: string;
+    scaleFamily?: ScaleFamily;
+    phraseBehavior?: PhraseBehavior;
+    harmonicGravity?: HarmonicGravity;
+    intervalPreference?: IntervalPreference;
+    phraseLength?: PhraseLength;
+    repetition?: RepetitionLevel;
   } = {},
+  preserveEdited: BassEvent[] = [],
+  seed?: number,
 ): BassEvent[] {
+  // ── Modal path ────────────────────────────────────────────────────
+  if (genotype.scaleFamily) {
+    const reg = (genotype.register as 'sub-harmonic' | 'low' | 'mid' | 'high') ?? 'low';
+    const range = registerToRange(reg);
+    const durations: Record<string, number> = {
+      micro: 1, staccato: 1, short: 2, medium: 4, long: 8, sustained: 12, drone: 16,
+    };
+    const length: PhraseLength =
+      genotype.phraseLength
+        ?? (cycleLength <= 4 ? 4
+        : cycleLength <= 8 ? 8
+        : cycleLength <= 16 ? 16 : 32);
+    return generateModalBass({
+      scaleFamily: genotype.scaleFamily,
+      scaleRoot: range.root,
+      behavior: genotype.phraseBehavior ?? 'walking',
+      length,
+      gravity: genotype.harmonicGravity ?? 'medium',
+      interval: genotype.intervalPreference ?? 'mixed',
+      repetition: genotype.repetition ?? 'moderate',
+      rhythmTracks: tracks,
+      cycleLength,
+      defaultDuration: durations[genotype.noteLength ?? 'short'] ?? 2,
+      minNote: range.min,
+      maxNote: range.max,
+      preserveEdited,
+      seed,
+    });
+  }
+
+  // ── Legacy rhythm-following path ─────────────────────────────────
   const cfg = configFromGenotype(genotype);
   const events = generateBassFromRhythm(tracks, cycleLength, cfg);
 
@@ -271,7 +321,17 @@ export function generateBassFromRhythmGenotype(
     for (const e of events) e.duration = dur;
   }
 
-  return mergeDuplicatePositions(events.sort((a, b) => a.position - b.position));
+  // Merge any user-edited events from the previous bass (preserveEdited
+  // takes priority — generator never overwrites a hand-tuned note).
+  const merged = mergeDuplicatePositions(events.sort((a, b) => a.position - b.position));
+  if (preserveEdited.length) {
+    const byPos = new Map(merged.map(e => [e.position, e]));
+    for (const e of preserveEdited.filter(e => e.editedManually)) {
+      byPos.set(e.position, e);
+    }
+    return [...byPos.values()].sort((a, b) => a.position - b.position);
+  }
+  return merged;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
